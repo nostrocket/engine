@@ -2,10 +2,13 @@ package main
 
 import (
 	"fmt"
+	"time"
 
+	"github.com/nbd-wtf/go-nostr"
 	"github.com/spf13/viper"
 	"nostrocket/engine/actors"
 	"nostrocket/engine/library"
+	"nostrocket/messaging/eventcatcher"
 )
 
 func main() {
@@ -20,6 +23,17 @@ func main() {
 	fmt.Println("CURRENT CONFIG")
 	for k, v := range actors.MakeOrGetConfig().AllSettings() {
 		fmt.Printf("\nKey: %s; Value: %v\n", k, v)
+	}
+	terminateChan := make(chan struct{})
+	eventChan := make(chan nostr.Event)
+	go eventcatcher.SubscribeToTree(terminateChan, eventChan)
+L:
+	for {
+		select {
+		case <-time.After(time.Second * 30):
+			close(terminateChan)
+			break L
+		}
 	}
 	fmt.Println(library.Bye())
 }
