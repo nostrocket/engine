@@ -2,16 +2,16 @@ package main
 
 import (
 	"fmt"
-	"time"
 
-	"github.com/nbd-wtf/go-nostr"
+	"github.com/sasha-s/go-deadlock"
 	"github.com/spf13/viper"
 	"nostrocket/engine/actors"
 	"nostrocket/engine/library"
-	"nostrocket/messaging/eventcatcher"
+	"nostrocket/messaging/eventconductor"
 )
 
 func main() {
+	fmt.Println(library.Hello())
 	// Various aspect of this application require global and local settings. To keep things
 	// clean and tidy we put these settings in a Viper configuration.
 	conf := viper.New()
@@ -25,15 +25,12 @@ func main() {
 		fmt.Printf("\nKey: %s; Value: %v\n", k, v)
 	}
 	terminateChan := make(chan struct{})
-	eventChan := make(chan nostr.Event)
-	go eventcatcher.SubscribeToTree(terminateChan, eventChan)
-L:
-	for {
-		select {
-		case <-time.After(time.Second * 30):
-			close(terminateChan)
-			break L
-		}
-	}
+	actors.SetTerminateChan(terminateChan)
+	go cliListener(terminateChan)
+	wg := &deadlock.WaitGroup{}
+	eventconductor.Start(wg)
+	<-terminateChan
+	wg.Wait()
+	//todo use waitgroup
 	fmt.Println(library.Bye())
 }

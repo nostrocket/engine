@@ -2,19 +2,20 @@ package eventcatcher
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/nbd-wtf/go-nostr"
 )
 
+const IgnitionEvent string = "fd459ea06157e30cfb87f7062ee3014bc143ecda072dd92ee6ea4315a6d2df1c"
+
 func SubscribeToTree(terminate chan struct{}, eChan chan nostr.Event) {
-	relay, err := nostr.RelayConnect(context.Background(), "wss://relay.damus.io")
+	relay, err := nostr.RelayConnect(context.Background(), "wss://nostr.688.org")
 	if err != nil {
 		panic(err)
 	}
 
 	tags := make(map[string][]string)
-	tags["e"] = []string{"503941a9939a4337d9aef7b92323c353441cb5ebe79f13fed77aeac615116354"}
+	tags["e"] = []string{IgnitionEvent}
 	var filters nostr.Filters
 	filters = []nostr.Filter{{
 		//Kinds: []int{1},
@@ -28,18 +29,18 @@ func SubscribeToTree(terminate chan struct{}, eChan chan nostr.Event) {
 
 	go func() {
 		<-sub.EndOfStoredEvents
-		fmt.Println(36)
 		// handle end of stored events (EOSE, see NIP-15)
 	}()
-	fmt.Println(40)
 L:
 	for {
 		select {
 		case ev := <-sub.Events:
-			fmt.Println(ev.ID)
+			go func() {
+				eChan <- *ev
+			}()
 		case <-terminate:
-			cancel()
 			break L
 		}
 	}
+	cancel()
 }
