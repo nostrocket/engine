@@ -26,12 +26,20 @@ func Start(wg *deadlock.WaitGroup) {
 var eventChan = make(chan nostr.Event)
 var started = false
 
+var sendChan = make(chan nostr.Event)
+
+func Publish(event nostr.Event) {
+	go func() {
+		sendChan <- event
+	}()
+}
+
 func handleEvents(wg *deadlock.WaitGroup) {
 	if !started {
 		started = true
 		wg.Add(1)
 		terminateChan := actors.GetTerminateChan()
-		go eventcatcher.SubscribeToTree(terminateChan, eventChan)
+		go eventcatcher.SubscribeToTree(terminateChan, eventChan, sendChan)
 		var replay []nostr.Event
 	L:
 		for {
