@@ -47,7 +47,11 @@ L:
 		select {
 		case ev := <-sub.Events:
 			go func() {
-				eChan <- *ev
+				if ev.Kind >= 640000 && ev.Kind <= 649999 {
+					if ok, _ := ev.CheckSignature(); ok {
+						eChan <- *ev
+					}
+				}
 			}()
 		case <-terminate:
 			break L

@@ -63,14 +63,14 @@ func createEvent() nostr.Event {
 		CreatedAt: time.Now(),
 		Kind:      640400,
 		Tags: nostr.Tags{nostr.Tag{
-			"e", "fd459ea06157e30cfb87f7062ee3014bc143ecda072dd92ee6ea4315a6d2df1c", "", "root"},
-			{"e", "0a73208becd0b1a9d294e6caef14352047ab44b848930e6979937fe09effaf71", "", "reply"},
-			{"e", "e7d743287254f99f3f85db26d0d283800b2d95dd614a93f7a36a698aed284947", "", "reply"},
+			"e", actors.IgnitionEvent, "", "root"},
+			{"e", actors.Identity, "", "reply"},
+			{"r", actors.ReplayPrevention, "", "reply"},
 		},
 	}
 	i := identity.Kind640400{
-		Name:  "gsovereignty2",
-		About: "This one MUST fail because name changed",
+		Name:  "gsovereignty",
+		About: "Just testing",
 	}
 	c, _ := json.Marshal(i)
 	e.Content = fmt.Sprintf("%s", c)

@@ -7,6 +7,7 @@ import (
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/sasha-s/go-deadlock"
 	"nostrocket/consensus/identity"
+	"nostrocket/consensus/replay"
 	"nostrocket/engine/actors"
 	"nostrocket/engine/library"
 	"nostrocket/messaging/eventcatcher"
@@ -21,6 +22,9 @@ func Start() {
 	//todo load events in state from current state
 	eventsInStateLock.Lock()
 	eventsInState[actors.IgnitionEvent] = nostr.Event{}
+	eventsInState[actors.StateChangeRequests] = nostr.Event{}
+	eventsInState[actors.ReplayPrevention] = nostr.Event{}
+	eventsInState[actors.Identity] = nostr.Event{}
 	eventsInStateLock.Unlock()
 	go handleEvents()
 }
@@ -42,26 +46,26 @@ func handleEvents() {
 		actors.GetWaitGroup().Add(1)
 		terminateChan := actors.GetTerminateChan()
 		go eventcatcher.SubscribeToTree(terminateChan, eventChan, sendChan)
-		var replay []nostr.Event
+		var toReplay []nostr.Event
 	L:
 		for {
 			select {
 			case e := <-eventChan:
-				processEvent(e, &replay)
+				processEvent(e, &toReplay)
 			//if event is in direct reply to an event that is in state, try to handle it. if not, put it aside to try again later
 			//if we are at the current tip, then when we see a new block from a block source, tag all current leaf nodes
 			//if we are not at the current tip, it means we are in catchup mode, so when a mind thread hits a block tag, pause until global state reaches that block.
 			case <-time.After(time.Second * 5):
 				var replayTemp []nostr.Event
 				fmt.Println("49")
-				for _, event := range replay {
+				for _, event := range toReplay {
 					processEvent(event, &replayTemp)
 				}
-				replay = []nostr.Event{}
-				replay = replayTemp
+				toReplay = []nostr.Event{}
+				toReplay = replayTemp
 			case <-terminateChan:
-				for _, event := range replay {
-					fmt.Printf("\n%#v\n", event.Tags)
+				for _, event := range toReplay {
+					fmt.Printf("\n%#v\n", event)
 				}
 				actors.GetWaitGroup().Done()
 				break L
@@ -70,25 +74,37 @@ func handleEvents() {
 	}
 }
 
-func processEvent(e nostr.Event, replay *[]nostr.Event) {
+func processEvent(e nostr.Event, toReplay *[]nostr.Event) {
 	eventsInStateLock.Lock()
 	defer eventsInStateLock.Unlock()
+	fmt.Println(77)
 	if eventsInState.isDirectReply(e) {
-		//todo handle event with appropriate mind
-		eventsInState[e.ID] = e
-		fmt.Println("DIRECT REPLY: ", e.ID)
-		if e.Kind == 640400 {
-			m, ok := identity.HandleEvent(e)
-			if !ok {
-				library.LogCLI("error", 1)
-			} else {
-				for account, i := range m {
-					fmt.Printf("ACCOUNT: %s\n%#v\n", account, i)
+		fmt.Println(79)
+		if closer, returner, ok := replay.HandleEvent(e); ok {
+			fmt.Println(81)
+			eventsInState[e.ID] = e
+			fmt.Printf("\n------\n%#v\n--------\n", e)
+			if e.Kind == 640400 {
+				m, ok := identity.HandleEvent(e)
+				if !ok {
+					library.LogCLI("error", 1)
+					closer <- false
+					close(returner)
+				} else {
+					closer <- true
+					mappedReplay := <-returner
+					close(returner)
+					fmt.Printf("\n%#v\n", mappedReplay)
+					for account, i := range m {
+						fmt.Printf("\nACCOUNT: %s\n%#v\n\n", account, i)
+					}
 				}
 			}
 		}
+
 	} else {
-		*replay = append(*replay, e)
+		fmt.Println(103)
+		*toReplay = append(*toReplay, e)
 		//fmt.Println("TO REPLAY: ", e.ID)
 	}
 }
