@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/nbd-wtf/go-nostr"
-	"nostrocket/messaging/eventcatcher"
 )
 
 func GenerateEvents(publish bool) []nostr.Event {
@@ -16,7 +15,7 @@ func generateEvents(publish bool) []nostr.Event {
 		PubKey:    MyWallet().Account,
 		CreatedAt: time.Now(),
 		Kind:      690000,
-		Tags:      nostr.Tags{nostr.Tag{"e", eventcatcher.IgnitionEvent, "", "reply"}},
+		Tags:      nostr.Tags{nostr.Tag{"e", IgnitionEvent, "", "reply"}},
 		Content:   "State Change Requests",
 	}
 	if !publish {

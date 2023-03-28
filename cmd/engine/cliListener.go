@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/eiannone/keyboard"
+	"nostrocket/consensus/identity"
 	"nostrocket/engine/actors"
 	"nostrocket/messaging/eventconductor"
 )
@@ -40,7 +41,10 @@ func cliListener(interrupt chan struct{}) {
 					fmt.Printf("\n%#v\nunix time: %d\n", e, e.CreatedAt.Unix())
 				}
 			}
-
+		case "I":
+			for account, i := range identity.GetMap() {
+				fmt.Printf("ACCOUNT: %s\n%#v\n", account, i)
+			}
 		}
 	}
 }

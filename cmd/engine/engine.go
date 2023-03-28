@@ -28,7 +28,8 @@ func main() {
 	actors.SetTerminateChan(terminateChan)
 	go cliListener(terminateChan)
 	wg := &deadlock.WaitGroup{}
-	eventconductor.Start(wg)
+	actors.SetWaitGroup(wg)
+	eventconductor.Start()
 	<-terminateChan
 	wg.Wait()
 	//todo use waitgroup

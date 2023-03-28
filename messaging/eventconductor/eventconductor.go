@@ -6,7 +6,9 @@ import (
 
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/sasha-s/go-deadlock"
+	"nostrocket/consensus/identity"
 	"nostrocket/engine/actors"
+	"nostrocket/engine/library"
 	"nostrocket/messaging/eventcatcher"
 )
 
@@ -15,12 +17,12 @@ type EventMap map[string]nostr.Event
 var eventsInState = make(EventMap)
 var eventsInStateLock = &deadlock.Mutex{}
 
-func Start(wg *deadlock.WaitGroup) {
+func Start() {
 	//todo load events in state from current state
 	eventsInStateLock.Lock()
-	eventsInState[eventcatcher.IgnitionEvent] = nostr.Event{}
+	eventsInState[actors.IgnitionEvent] = nostr.Event{}
 	eventsInStateLock.Unlock()
-	go handleEvents(wg)
+	go handleEvents()
 }
 
 var eventChan = make(chan nostr.Event)
@@ -34,10 +36,10 @@ func Publish(event nostr.Event) {
 	}()
 }
 
-func handleEvents(wg *deadlock.WaitGroup) {
+func handleEvents() {
 	if !started {
 		started = true
-		wg.Add(1)
+		actors.GetWaitGroup().Add(1)
 		terminateChan := actors.GetTerminateChan()
 		go eventcatcher.SubscribeToTree(terminateChan, eventChan, sendChan)
 		var replay []nostr.Event
@@ -61,7 +63,7 @@ func handleEvents(wg *deadlock.WaitGroup) {
 				for _, event := range replay {
 					fmt.Printf("\n%#v\n", event.Tags)
 				}
-				wg.Done()
+				actors.GetWaitGroup().Done()
 				break L
 			}
 		}
@@ -75,6 +77,16 @@ func processEvent(e nostr.Event, replay *[]nostr.Event) {
 		//todo handle event with appropriate mind
 		eventsInState[e.ID] = e
 		fmt.Println("DIRECT REPLY: ", e.ID)
+		if e.Kind == 640400 {
+			m, ok := identity.HandleEvent(e)
+			if !ok {
+				library.LogCLI("error", 1)
+			} else {
+				for account, i := range m {
+					fmt.Printf("ACCOUNT: %s\n%#v\n", account, i)
+				}
+			}
+		}
 	} else {
 		*replay = append(*replay, e)
 		//fmt.Println("TO REPLAY: ", e.ID)
