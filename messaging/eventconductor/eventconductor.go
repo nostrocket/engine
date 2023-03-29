@@ -1,6 +1,7 @@
 package eventconductor
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -35,6 +36,7 @@ var started = false
 var sendChan = make(chan nostr.Event)
 
 func Publish(event nostr.Event) {
+	fmt.Println(39)
 	go func() {
 		sendChan <- event
 	}()
@@ -94,14 +96,18 @@ func processEvent(e nostr.Event, toReplay *[]nostr.Event) {
 					closer <- true
 					mappedReplay := <-returner
 					close(returner)
-					fmt.Printf("\n%#v\n", mappedReplay)
-					for account, i := range m {
-						fmt.Printf("\nACCOUNT: %s\n%#v\n\n", account, i)
+					actors.AppendState("replay", mappedReplay)
+					n, _ := actors.AppendState("identity", m)
+					b, err := json.Marshal(n)
+					if err != nil {
+						library.LogCLI(err.Error(), 1)
+					} else {
+						fmt.Printf("%s", b)
+						Publish(actors.EventBuilder(fmt.Sprintf("%s", b)))
 					}
 				}
 			}
 		}
-
 	} else {
 		fmt.Println(103)
 		*toReplay = append(*toReplay, e)

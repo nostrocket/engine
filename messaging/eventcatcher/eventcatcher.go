@@ -29,11 +29,13 @@ func SubscribeToTree(terminate chan struct{}, eChan chan nostr.Event, sendChan c
 	sub := relay.Subscribe(ctx, filters)
 
 	go func() {
-		select {
-		case e := <-sendChan:
-			_, err := relay.Publish(context.Background(), e)
-			if err != nil {
-				library.LogCLI(err.Error(), 2)
+		for {
+			select {
+			case e := <-sendChan:
+				_, err := relay.Publish(context.Background(), e)
+				if err != nil {
+					library.LogCLI(err.Error(), 2)
+				}
 			}
 		}
 	}()

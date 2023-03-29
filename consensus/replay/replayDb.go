@@ -34,7 +34,7 @@ func startDb() {
 		go start(ready)
 		// when the database has started, the goroutine will close the `ready` channel.
 		<-ready //This channel listener blocks until closed by `startDb`.
-		library.LogCLI("Identity Mind has started", 4)
+		library.LogCLI("Replay Mind has started", 4)
 	}
 }
 
@@ -42,7 +42,7 @@ func start(ready chan struct{}) {
 	// We add a delta to the provided waitgroup so that upstream knows when the database has been safely shut down
 	actors.GetWaitGroup().Add(1)
 	// Load current shares from disk
-	c, ok := actors.Open("identity", "current")
+	c, ok := actors.Open("replay", "current")
 	if ok {
 		currentState.restoreFromDisk(c)
 	}
@@ -54,10 +54,10 @@ func start(ready chan struct{}) {
 	if err != nil {
 		library.LogCLI(err.Error(), 0)
 	}
-	actors.Write("identity", "current", b)
+	actors.Write("replay", "current", b)
 	currentState.persistToDisk()
 	actors.GetWaitGroup().Done()
-	library.LogCLI("Identity Mind has shut down", 4)
+	library.LogCLI("Replay Mind has shut down", 4)
 }
 
 func (s *db) restoreFromDisk(f *os.File) {
@@ -81,7 +81,7 @@ func (s *db) persistToDisk() {
 	if err != nil {
 		library.LogCLI(err.Error(), 0)
 	}
-	actors.Write("identity", "current", b)
+	actors.Write("replay", "current", b)
 }
 
 func GetMap() Mapped {

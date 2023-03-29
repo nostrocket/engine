@@ -5,8 +5,8 @@ import (
 
 	"github.com/eiannone/keyboard"
 	"nostrocket/consensus/identity"
+	"nostrocket/consensus/replay"
 	"nostrocket/engine/actors"
-	"nostrocket/messaging/eventconductor"
 )
 
 // cliListener is a cheap and nasty way to speed up development cycles. It listens for keypresses and executes commands.
@@ -32,19 +32,12 @@ func cliListener(interrupt chan struct{}) {
 			close(interrupt)
 		case "w":
 			fmt.Printf("Current Wallet: \n%v\n", actors.MyWallet())
-		case "i":
-			var publish = false
-			for _, e := range actors.GenerateEvents(publish) {
-				if publish {
-					eventconductor.Publish(e)
-				} else {
-					fmt.Printf("\n%#v\nunix time: %d\n", e, e.CreatedAt.Unix())
-				}
-			}
 		case "I":
 			for account, i := range identity.GetMap() {
 				fmt.Printf("ACCOUNT: %s\n%#v\n", account, i)
 			}
+		case "r":
+			fmt.Println(replay.GetCurrentHashForAccount(actors.MyWallet().Account))
 		}
 	}
 }
