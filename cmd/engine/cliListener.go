@@ -38,6 +38,11 @@ func cliListener(interrupt chan struct{}) {
 			}
 		case "r":
 			fmt.Println(replay.GetCurrentHashForAccount(actors.MyWallet().Account))
+		case "c":
+			fmt.Println("CURRENT CONFIG")
+			for k, v := range actors.MakeOrGetConfig().AllSettings() {
+				fmt.Printf("\nKey: %s; Value: %v\n", k, v)
+			}
 		}
 	}
 }

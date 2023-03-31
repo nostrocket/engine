@@ -36,7 +36,6 @@ var started = false
 var sendChan = make(chan nostr.Event)
 
 func Publish(event nostr.Event) {
-	fmt.Println(39)
 	go func() {
 		sendChan <- event
 	}()
@@ -59,7 +58,6 @@ func handleEvents() {
 			//if we are not at the current tip, it means we are in catchup mode, so when a mind thread hits a block tag, pause until global state reaches that block.
 			case <-time.After(time.Second * 5):
 				var replayTemp []nostr.Event
-				fmt.Println("49")
 				for _, event := range toReplay {
 					processEvent(event, &replayTemp)
 				}
