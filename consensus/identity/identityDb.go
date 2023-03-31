@@ -2,7 +2,6 @@ package identity
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 
 	"github.com/sasha-s/go-deadlock"
@@ -63,16 +62,13 @@ func start(ready chan struct{}) {
 }
 
 func insertIgnitionState() {
-	fmt.Println(66)
 	//todo preflight
 	ignitionAccount := getLatestIdentity(actors.IgnitionAccount)
 	if len(ignitionAccount.UniqueSovereignBy) == 0 {
-		fmt.Println(70)
 		ignitionAccount.UniqueSovereignBy = "1Humanityrvhus5mFWRRzuJjtAbjk2qwww"
 		ignitionAccount.MaintainerBy = "1Humanityrvhus5mFWRRzuJjtAbjk2qwww"
 		currentState.upsert(actors.IgnitionAccount, ignitionAccount)
 		currentState.persistToDisk()
-		fmt.Println(75)
 	}
 }
 func getLatestIdentity(account library.Account) Identity {
@@ -108,6 +104,7 @@ func (s *db) persistToDisk() {
 }
 
 func GetMap() Mapped {
+	startDb()
 	currentState.mutex.Lock()
 	defer currentState.mutex.Unlock()
 	return getMap()

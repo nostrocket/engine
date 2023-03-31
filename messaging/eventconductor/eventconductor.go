@@ -79,11 +79,8 @@ func handleEvents() {
 func processEvent(e nostr.Event, toReplay *[]nostr.Event) {
 	eventsInStateLock.Lock()
 	defer eventsInStateLock.Unlock()
-	fmt.Println(77)
 	if eventsInState.isDirectReply(e) {
-		fmt.Println(79)
 		if closer, returner, ok := replay.HandleEvent(e); ok {
-			fmt.Println(81)
 			eventsInState[e.ID] = e
 			fmt.Printf("\n------\n%#v\n--------\n", e)
 			if e.Kind == 640400 {
@@ -109,7 +106,6 @@ func processEvent(e nostr.Event, toReplay *[]nostr.Event) {
 			}
 		}
 	} else {
-		fmt.Println(103)
 		*toReplay = append(*toReplay, e)
 		//fmt.Println("TO REPLAY: ", e.ID)
 	}
@@ -125,7 +121,6 @@ func (m EventMap) isDirectReply(event nostr.Event) bool {
 							return true
 						}
 					} else {
-						fmt.Println(86)
 						return true
 					}
 				}
