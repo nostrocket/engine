@@ -74,9 +74,15 @@ func handleEvents() {
 	}
 }
 
+var printed = make(map[string]struct{})
+
 func processEvent(e nostr.Event, toReplay *[]nostr.Event) {
 	eventsInStateLock.Lock()
 	defer eventsInStateLock.Unlock()
+	if _, exists := printed[e.ID]; !exists {
+		fmt.Printf("\n80: %s\n", e.ID)
+		printed[e.ID] = struct{}{}
+	}
 	if eventsInState.isDirectReply(e) {
 		if closer, returner, ok := replay.HandleEvent(e); ok {
 			eventsInState[e.ID] = e
