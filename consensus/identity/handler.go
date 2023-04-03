@@ -2,14 +2,13 @@ package identity
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/nbd-wtf/go-nostr"
 	"nostrocket/engine/library"
 )
 
-//todo problem we are not adding account to Identity
-
-func HandleEvent(event nostr.Event) (m Mapped, b bool) {
+func HandleEvent(event nostr.Event) (m Mapped, e error) {
 	startDb()
 	if sig, _ := event.CheckSignature(); !sig {
 		return
@@ -26,7 +25,7 @@ func HandleEvent(event nostr.Event) (m Mapped, b bool) {
 			err := json.Unmarshal([]byte(event.Content), &unmarshalled)
 			if err != nil {
 				library.LogCLI(err.Error(), 3)
-				return
+				return m, err
 			} else {
 				if len(unmarshalled.Name) > 0 {
 					if existingIdentity.addName(unmarshalled.Name) {
@@ -45,7 +44,7 @@ func HandleEvent(event nostr.Event) (m Mapped, b bool) {
 			err := json.Unmarshal([]byte(event.Content), &unmarshalled)
 			if err != nil {
 				library.LogCLI(err.Error(), 3)
-				return
+				return m, err
 			}
 			target, okt := currentState.data[unmarshalled.Target]
 			bestower, okb := currentState.data[event.PubKey]
@@ -89,7 +88,7 @@ func HandleEvent(event nostr.Event) (m Mapped, b bool) {
 			err := json.Unmarshal([]byte(event.Content), &unmarshalled)
 			if err != nil {
 				library.LogCLI(err.Error(), 3)
-				return
+				return m, err
 			}
 			//todo validate bitcoin signed message
 			existingIdentity.OpReturnAddr = append(existingIdentity.OpReturnAddr, []string{unmarshalled.Address, unmarshalled.Proof})
@@ -103,10 +102,10 @@ func HandleEvent(event nostr.Event) (m Mapped, b bool) {
 				currentState.data[ident.Account] = ident
 			}
 			currentState.persistToDisk()
-			return getMap(), true
+			return getMap(), nil
 		}
 	}
-	return
+	return m, fmt.Errorf("event %s did not cause a state change", event.ID)
 }
 
 func nameTaken(name string) bool {

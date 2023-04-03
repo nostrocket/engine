@@ -88,9 +88,9 @@ func processEvent(e nostr.Event, toReplay *[]nostr.Event) {
 			eventsInState[e.ID] = e
 			fmt.Printf("\n------\n%#v\n--------\n", e)
 			if e.Kind == 640400 {
-				m, ok := identity.HandleEvent(e)
-				if !ok {
-					library.LogCLI("error", 1)
+				m, err := identity.HandleEvent(e)
+				if err != nil {
+					library.LogCLI(err.Error(), 2)
 					closer <- false
 					close(returner)
 				} else {
