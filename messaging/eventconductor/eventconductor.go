@@ -87,25 +87,23 @@ func processEvent(e nostr.Event, toReplay *[]nostr.Event) {
 		if closer, returner, ok := replay.HandleEvent(e); ok {
 			eventsInState[e.ID] = e
 			fmt.Printf("\n------\n%#v\n--------\n", e)
-			if e.Kind == 640400 {
-				m, err := identity.HandleEvent(e)
+			mindName, mappedState, err := routeEvent(e)
+			if err != nil {
+				library.LogCLI(err.Error(), 2)
+				closer <- false
+				close(returner)
+			} else {
+				closer <- true
+				mappedReplay := <-returner
+				close(returner)
+				actors.AppendState("replay", mappedReplay)
+				n, _ := actors.AppendState(mindName, mappedState)
+				b, err := json.Marshal(n)
 				if err != nil {
-					library.LogCLI(err.Error(), 2)
-					closer <- false
-					close(returner)
+					library.LogCLI(err.Error(), 1)
 				} else {
-					closer <- true
-					mappedReplay := <-returner
-					close(returner)
-					actors.AppendState("replay", mappedReplay)
-					n, _ := actors.AppendState("identity", m)
-					b, err := json.Marshal(n)
-					if err != nil {
-						library.LogCLI(err.Error(), 1)
-					} else {
-						fmt.Printf("%s", b)
-						Publish(actors.EventBuilder(fmt.Sprintf("%s", b)))
-					}
+					fmt.Printf("%s", b)
+					Publish(actors.EventBuilder(fmt.Sprintf("%s", b)))
 				}
 			}
 		}
@@ -113,6 +111,19 @@ func processEvent(e nostr.Event, toReplay *[]nostr.Event) {
 		*toReplay = append(*toReplay, e)
 		//fmt.Println("TO REPLAY: ", e.ID)
 	}
+}
+
+func routeEvent(e nostr.Event) (mindName string, newState any, err error) {
+	switch k := e.Kind; {
+	default:
+		mindName = ""
+		newState = nil
+		err = fmt.Errorf("no mind to handle kind %s", e.Kind)
+	case k >= 640400 && k <= 640499:
+		mindName = "identity"
+		newState, err = identity.HandleEvent(e)
+	}
+	return
 }
 
 func (m EventMap) isDirectReply(event nostr.Event) bool {
