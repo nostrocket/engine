@@ -39,10 +39,10 @@ type Kind640400 struct {
 //Kind640402 STATUS:DRAFT
 //Used for adding Participants to the USH and Maintainer tree.
 type Kind640402 struct {
-	Target     string `json:"target"`
-	Maintainer bool   `json:"maintainer"`
-	USH        bool   `json:"ush"`
-	Character  bool   `json:"character"`
+	Target     library.Account `json:"target"`
+	Maintainer bool            `json:"maintainer"`
+	USH        bool            `json:"ush"`
+	Character  bool            `json:"character"`
 }
 
 //Kind640404 STATUS:DRAFT

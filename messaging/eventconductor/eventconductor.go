@@ -9,6 +9,7 @@ import (
 	"github.com/sasha-s/go-deadlock"
 	"nostrocket/consensus/identity"
 	"nostrocket/consensus/replay"
+	"nostrocket/consensus/shares"
 	"nostrocket/engine/actors"
 	"nostrocket/engine/library"
 	"nostrocket/messaging/eventcatcher"
@@ -26,6 +27,7 @@ func Start() {
 	eventsInState[actors.StateChangeRequests] = nostr.Event{}
 	eventsInState[actors.ReplayPrevention] = nostr.Event{}
 	eventsInState[actors.Identity] = nostr.Event{}
+	eventsInState[actors.Shares] = nostr.Event{}
 	eventsInStateLock.Unlock()
 	go handleEvents()
 }
@@ -86,7 +88,7 @@ func processEvent(e nostr.Event, toReplay *[]nostr.Event) {
 	if eventsInState.isDirectReply(e) {
 		if closer, returner, ok := replay.HandleEvent(e); ok {
 			eventsInState[e.ID] = e
-			fmt.Printf("\n------\n%#v\n--------\n", e)
+			fmt.Printf("\n---HANDLING EVENT---\n%#v\n--------\n", e)
 			mindName, mappedState, err := routeEvent(e)
 			if err != nil {
 				library.LogCLI(err.Error(), 2)
@@ -122,6 +124,9 @@ func routeEvent(e nostr.Event) (mindName string, newState any, err error) {
 	case k >= 640400 && k <= 640499:
 		mindName = "identity"
 		newState, err = identity.HandleEvent(e)
+	case k >= 640200 && k <= 640299:
+		mindName = "shares"
+		newState, err = shares.HandleEvent(e)
 	}
 	return
 }

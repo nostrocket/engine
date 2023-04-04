@@ -119,6 +119,7 @@ func getMap() Mapped {
 }
 
 func IsMaintainer(account library.Account) bool {
+	startDb()
 	id := getLatestIdentity(account)
 	if len(id.MaintainerBy) > 0 {
 		return true
@@ -127,6 +128,7 @@ func IsMaintainer(account library.Account) bool {
 }
 
 func IsUSH(account library.Account) bool {
+	startDb()
 	id := getLatestIdentity(account)
 	if len(id.UniqueSovereignBy) > 0 {
 		return true
