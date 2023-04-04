@@ -45,6 +45,17 @@ func createEvent() nostr.Event {
 	//	Content: "Identity",
 	//}
 
+	//e := nostr.Event{
+	//	PubKey:    actors.MyWallet().Account,
+	//	CreatedAt: time.Now(),
+	//	Kind:      640000,
+	//	Tags: nostr.Tags{nostr.Tag{
+	//		"e", "fd459ea06157e30cfb87f7062ee3014bc143ecda072dd92ee6ea4315a6d2df1c", "", "root"},
+	//		{"e", "7a22f580d253c4142aa4e6b28d577b2d59fdd30083b0eb27ee76a9bd750bff26", "", "reply"},
+	//	},
+	//	Content: "Shares",
+	//}
+
 	e := nostr.Event{
 		PubKey:    actors.MyWallet().Account,
 		CreatedAt: time.Now(),
@@ -53,9 +64,8 @@ func createEvent() nostr.Event {
 			"e", "fd459ea06157e30cfb87f7062ee3014bc143ecda072dd92ee6ea4315a6d2df1c", "", "root"},
 			{"e", "7a22f580d253c4142aa4e6b28d577b2d59fdd30083b0eb27ee76a9bd750bff26", "", "reply"},
 		},
-		Content: "Shares",
+		Content: "Subrockets",
 	}
-
 	//e := nostr.Event{
 	//	PubKey:    actors.MyWallet().Account,
 	//	CreatedAt: time.Now(),

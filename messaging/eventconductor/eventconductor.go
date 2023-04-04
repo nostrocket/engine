@@ -10,6 +10,7 @@ import (
 	"nostrocket/consensus/identity"
 	"nostrocket/consensus/replay"
 	"nostrocket/consensus/shares"
+	"nostrocket/consensus/subrockets"
 	"nostrocket/engine/actors"
 	"nostrocket/engine/library"
 	"nostrocket/messaging/eventcatcher"
@@ -127,6 +128,9 @@ func routeEvent(e nostr.Event) (mindName string, newState any, err error) {
 	case k >= 640200 && k <= 640299:
 		mindName = "shares"
 		newState, err = shares.HandleEvent(e)
+	case k >= 640600 && k <= 640699:
+		mindName = "subrockets"
+		newState, err = subrockets.HandleEvent(e)
 	}
 	return
 }
