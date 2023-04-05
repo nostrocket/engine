@@ -29,6 +29,7 @@ func Start() {
 	eventsInState[actors.ReplayPrevention] = nostr.Event{}
 	eventsInState[actors.Identity] = nostr.Event{}
 	eventsInState[actors.Shares] = nostr.Event{}
+	eventsInState[actors.Subrockets] = nostr.Event{}
 	eventsInStateLock.Unlock()
 	go handleEvents()
 }
