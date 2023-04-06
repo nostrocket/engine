@@ -8,7 +8,7 @@ import (
 	"nostrocket/engine/library"
 )
 
-func SubscribeToTree(terminate chan struct{}, eChan chan nostr.Event, sendChan chan nostr.Event) {
+func SubscribeToTree(eChan chan nostr.Event, sendChan chan nostr.Event) {
 	relay, err := nostr.RelayConnect(context.Background(), actors.MakeOrGetConfig().GetStringSlice("relaysMust")[0])
 	if err != nil {
 		panic(err)
@@ -48,14 +48,20 @@ L:
 	for {
 		select {
 		case ev := <-sub.Events:
-			go func() {
-				if ev.Kind >= 640000 && ev.Kind <= 649999 {
-					if ok, _ := ev.CheckSignature(); ok {
-						eChan <- *ev
+			if ev == nil {
+				library.LogCLI("Restarting Eventcatcher", 4)
+				go SubscribeToTree(eChan, sendChan)
+				break L
+			} else {
+				go func() {
+					if ev.Kind >= 640000 && ev.Kind <= 649999 {
+						if ok, _ := ev.CheckSignature(); ok {
+							eChan <- *ev
+						}
 					}
-				}
-			}()
-		case <-terminate:
+				}()
+			}
+		case <-actors.GetTerminateChan():
 			break L
 		}
 	}

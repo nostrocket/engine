@@ -49,8 +49,7 @@ func handleEvents() {
 	if !started {
 		started = true
 		actors.GetWaitGroup().Add(1)
-		terminateChan := actors.GetTerminateChan()
-		go eventcatcher.SubscribeToTree(terminateChan, eventChan, sendChan)
+		go eventcatcher.SubscribeToTree(eventChan, sendChan)
 		var toReplay []nostr.Event
 	L:
 		for {
@@ -67,7 +66,7 @@ func handleEvents() {
 				}
 				toReplay = []nostr.Event{}
 				toReplay = replayTemp
-			case <-terminateChan:
+			case <-actors.GetTerminateChan():
 				for _, event := range toReplay {
 					fmt.Printf("\n%#v\n", event)
 				}
