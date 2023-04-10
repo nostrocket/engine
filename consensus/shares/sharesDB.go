@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/nbd-wtf/go-nostr"
 	"github.com/sasha-s/go-deadlock"
 	"nostrocket/consensus/subrockets"
 	"nostrocket/engine/actors"
@@ -57,6 +58,19 @@ func start(ready chan struct{}) {
 			d := currentState[s]
 			d.restoreFromDisk(c)
 			currentState[s] = d
+		}
+	}
+	if _, ok := currentState["nostroket"]; !ok {
+		k640208 := Kind640208{RocketID: "nostrocket"}
+		j, err := json.Marshal(k640208)
+		if err != nil {
+			library.LogCLI(err.Error(), 0)
+		}
+		if _, err := handle640208(nostr.Event{
+			PubKey:  actors.IgnitionAccount,
+			Content: fmt.Sprintf("%s", j),
+		}); err != nil {
+			library.LogCLI(err.Error(), 0)
 		}
 	}
 	close(ready)

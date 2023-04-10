@@ -36,6 +36,7 @@ func handle640208(event nostr.Event) (m Mapped, err error) {
 	if err = json.Unmarshal([]byte(event.Content), &unmarshalled); err != nil {
 		return m, fmt.Errorf("%s reported for event %s", err.Error(), event.ID)
 	}
+	fmt.Println(event)
 	var founder library.Account
 	var ok bool
 	if founder, ok = subrockets.Names()[unmarshalled.RocketID]; !ok {

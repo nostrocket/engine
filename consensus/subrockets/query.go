@@ -5,6 +5,7 @@ import (
 )
 
 func Names() map[string]library.Account {
+	startDb()
 	currentState.mutex.Lock()
 	defer currentState.mutex.Unlock()
 	//todo allow ignition account to create the nostrocket subrocket, rather than hardcoding it

@@ -1,0 +1,42 @@
+We iterate through the events in the consensus tree.
+
+We start with the ignition account which has a permille of 1000.
+
+We find their first reply (x) to the consensustree root event.
+
+    We fetch the event contained within, and replay it.
+
+    If it fails, we crash.
+
+We find their next event in the consensus tree, which is a reply to x.
+
+    We fetch the event contained within, and replay it.
+
+    If it fails, we crash.
+
+We repeat this for all events while this account has a permille of 1000.
+
+When we see another account with votepower, we look for their events in reply to the consensus tree.
+
+Their first event MUST be in reply to the last event(s) that have 1000 permille.
+
+If we have votepower, we produce replies to the consensustree.
+
+We start by replaying events that have votepower behind them and publish these if we can replay them.
+
+Upon first having votepower, reply to the SET of all events that combined produce 1000 permille (or highest)
+
+
+FOR each state change event:
+- Do we have votepower?
+
+
+
+LAST MILE for accounts with votepower (no votepower = follow only)
+Catch up to latest event from consensustree
+Put all the events in the list of processed events
+If we see an event with a timestamp after the latest consesnsutree event, and it's not in processed events, process it.
+
+
+For each height in the consensustree, check the permille for each event ID (the included event ID).
+Multiple event IDs = contention.

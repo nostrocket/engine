@@ -2,6 +2,7 @@ package eventcatcher
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/nbd-wtf/go-nostr"
 	"nostrocket/engine/actors"
@@ -42,7 +43,10 @@ func SubscribeToTree(eChan chan nostr.Event, sendChan chan nostr.Event) {
 
 	go func() {
 		<-sub.EndOfStoredEvents
+		fmt.Println(46)
 		// handle end of stored events (EOSE, see NIP-15)
+		//todo process consensustree here, and begin storing new events in a separate place so we can play them after catchup if we have votepower
+		//subscribe to kind 640064
 	}()
 L:
 	for {

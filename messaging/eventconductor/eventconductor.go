@@ -7,6 +7,7 @@ import (
 
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/sasha-s/go-deadlock"
+	"nostrocket/consensus/consensustree"
 	"nostrocket/consensus/identity"
 	"nostrocket/consensus/replay"
 	"nostrocket/consensus/shares"
@@ -27,6 +28,7 @@ func Start() {
 	eventsInState[actors.IgnitionEvent] = nostr.Event{}
 	eventsInState[actors.StateChangeRequests] = nostr.Event{}
 	eventsInState[actors.ReplayPrevention] = nostr.Event{}
+	eventsInState[actors.ConsensusTree] = nostr.Event{}
 	eventsInState[actors.Identity] = nostr.Event{}
 	eventsInState[actors.Shares] = nostr.Event{}
 	eventsInState[actors.Subrockets] = nostr.Event{}
@@ -41,7 +43,9 @@ var sendChan = make(chan nostr.Event)
 
 func Publish(event nostr.Event) {
 	go func() {
+		fmt.Println(45)
 		sendChan <- event
+		fmt.Println(47, event.Kind, event.Content, event.Tags)
 	}()
 }
 
@@ -99,6 +103,7 @@ func processEvent(e nostr.Event, toReplay *[]nostr.Event) {
 				closer <- true
 				mappedReplay := <-returner
 				close(returner)
+				publishConsensusTree(e)
 				actors.AppendState("replay", mappedReplay)
 				n, _ := actors.AppendState(mindName, mappedState)
 				b, err := json.Marshal(n)
@@ -113,6 +118,22 @@ func processEvent(e nostr.Event, toReplay *[]nostr.Event) {
 	} else {
 		*toReplay = append(*toReplay, e)
 		//fmt.Println("TO REPLAY: ", e.ID)
+	}
+}
+
+func publishConsensusTree(e nostr.Event) {
+	if shares.VotepowerForAccount(actors.MyWallet().Account) > 0 {
+		//todo get current bitcoin height
+
+		consensusEvent, err := consensustree.ProduceEvent(e.ID, 0)
+		if err != nil {
+			library.LogCLI(err, 1)
+			return
+		}
+		Publish(consensusEvent)
+		if err := consensustree.HandleEvent(consensusEvent); err != nil {
+			library.LogCLI(err, 1)
+		}
 	}
 }
 
@@ -131,6 +152,8 @@ func routeEvent(e nostr.Event) (mindName string, newState any, err error) {
 	case k >= 640600 && k <= 640699:
 		mindName = "subrockets"
 		newState, err = subrockets.HandleEvent(e)
+	case k == 640064:
+		fmt.Printf("\n640064\n%#v\n", e)
 	}
 	return
 }

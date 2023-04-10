@@ -1,4 +1,4 @@
-package subrockets
+package consensustree
 
 import (
 	"encoding/json"
@@ -10,12 +10,12 @@ import (
 )
 
 type db struct {
-	data  map[library.RocketID]Rocket
+	data  map[int64]map[library.Sha256]TreeEvent
 	mutex *deadlock.Mutex
 }
 
 var currentState = db{
-	data:  make(map[library.RocketID]Rocket),
+	data:  make(map[int64]map[library.Sha256]TreeEvent),
 	mutex: &deadlock.Mutex{},
 }
 
@@ -34,7 +34,7 @@ func startDb() {
 		go start(ready)
 		// when the database has started, the goroutine will close the `ready` channel.
 		<-ready //This channel listener blocks until closed by `startDb`.
-		library.LogCLI("Subrockets Mind has started", 4)
+		library.LogCLI("Consensus Tree Mind has started", 4)
 	}
 }
 
@@ -42,18 +42,10 @@ func start(ready chan struct{}) {
 	// We add a delta to the provided waitgroup so that upstream knows when the database has been safely shut down
 	actors.GetWaitGroup().Add(1)
 	// Load current shares from disk
-	c, ok := actors.Open("subrockets", "current")
+	c, ok := actors.Open("consensustree", "current")
 	if ok {
 		currentState.restoreFromDisk(c)
 	}
-	if _, exists := currentState.data["nostrocket"]; !exists {
-		currentState.data["nostrocket"] = Rocket{
-			RocketID:  "nostrocket",
-			CreatedBy: actors.IgnitionAccount,
-			ProblemID: actors.IgnitionEvent,
-		}
-	}
-	currentState.persistToDisk()
 	close(ready)
 	<-actors.GetTerminateChan()
 	currentState.mutex.Lock()
@@ -62,10 +54,10 @@ func start(ready chan struct{}) {
 	if err != nil {
 		library.LogCLI(err.Error(), 0)
 	}
-	actors.Write("subrockets", "current", b)
+	actors.Write("consensustree", "current", b)
 	currentState.persistToDisk()
 	actors.GetWaitGroup().Done()
-	library.LogCLI("Subrockets Mind has shut down", 4)
+	library.LogCLI("Consensus Tree Mind has shut down", 4)
 }
 
 func (s *db) restoreFromDisk(f *os.File) {
@@ -89,25 +81,5 @@ func (s *db) persistToDisk() {
 	if err != nil {
 		library.LogCLI(err.Error(), 0)
 	}
-	actors.Write("subrockets", "current", b)
-}
-
-func GetMap() Mapped {
-	startDb()
-	currentState.mutex.Lock()
-	defer currentState.mutex.Unlock()
-	return getMap()
-}
-
-func getMap() Mapped {
-	m := make(map[library.RocketID]Rocket)
-	for key, val := range currentState.data {
-		m[key] = val
-	}
-	return m
-}
-
-func (s *db) upsert(key library.RocketID, val Rocket) {
-	val.RocketID = key
-	s.data[key] = val
+	actors.Write("consensustree", "current", b)
 }
