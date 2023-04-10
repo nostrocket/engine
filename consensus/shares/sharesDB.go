@@ -118,3 +118,13 @@ func getMapped() Mapped {
 	}
 	return mOuter
 }
+
+func VotepowerForAccount(account library.Account) int64 {
+	startDb()
+	currentState["nostrocket"].mutex.Lock()
+	defer currentState["nostrocket"].mutex.Unlock()
+	if shares, ok := currentState["nostrocket"].data[account]; ok {
+		return shares.LeadTime * shares.LeadTimeLockedShares
+	}
+	return 0
+}
