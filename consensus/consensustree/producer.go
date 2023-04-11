@@ -58,7 +58,7 @@ func produceEvent(stateChangeEventID library.Sha256, bitcoinHeight int64, eventH
 	}
 	n := nostr.Event{
 		PubKey:    actors.MyWallet().Account,
-		CreatedAt: time.Time{},
+		CreatedAt: time.Now(),
 		Kind:      640064,
 		Tags:      t,
 		Content:   fmt.Sprintf("%s", j),

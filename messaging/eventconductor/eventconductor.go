@@ -45,7 +45,7 @@ func Publish(event nostr.Event) {
 	go func() {
 		fmt.Println(45)
 		sendChan <- event
-		fmt.Println(47, event.Kind, event.Content, event.Tags)
+		//fmt.Printf("\n48\n%#v\n", event)
 	}()
 }
 
@@ -53,7 +53,7 @@ func handleEvents() {
 	if !started {
 		started = true
 		actors.GetWaitGroup().Add(1)
-		go eventcatcher.SubscribeToTree(eventChan, sendChan)
+		go eventcatcher.SubscribeToTree(eventChan, sendChan, make(chan struct{}))
 		var toReplay []nostr.Event
 	L:
 		for {
