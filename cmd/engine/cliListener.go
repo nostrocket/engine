@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/eiannone/keyboard"
+	"nostrocket/consensus/consensustree"
 	"nostrocket/consensus/identity"
 	"nostrocket/consensus/replay"
 	"nostrocket/engine/actors"
@@ -42,6 +43,12 @@ func cliListener(interrupt chan struct{}) {
 			fmt.Println("CURRENT CONFIG")
 			for k, v := range actors.MakeOrGetConfig().AllSettings() {
 				fmt.Printf("\nKey: %s; Value: %v\n", k, v)
+			}
+		case "C":
+			h, d := consensustree.GetMyLatest()
+			fmt.Printf("\n%s: %d\n", h, d)
+			for _, m := range consensustree.GetMap() {
+				fmt.Printf("\n%#v\n", m)
 			}
 		}
 	}

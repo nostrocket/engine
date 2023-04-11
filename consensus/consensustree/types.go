@@ -1,14 +1,15 @@
 package consensustree
 
 import (
+	"github.com/nbd-wtf/go-nostr"
 	"nostrocket/engine/library"
 )
 
 type TreeEvent struct {
 	StateChangeEventHeight int64
 	StateChangeEventID     library.Sha256
-	Signers                []library.Account
-	EventIDs               []library.Sha256
+	Signers                map[library.Account]int64 //votepower
+	ConsensusEvents        map[library.Sha256]nostr.Event
 	IHaveSigned            bool
 	IHaveReplaced          bool
 	Votepower              int64

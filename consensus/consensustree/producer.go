@@ -20,7 +20,7 @@ func ProduceEvent(stateChangeEventID library.Sha256, bitcoinHeight int64) (nostr
 	defer currentState.mutex.Unlock()
 	if len(currentState.data) == 0 && actors.MyWallet().Account == actors.IgnitionAccount {
 		//exception for first event
-		return produceEvent(stateChangeEventID, bitcoinHeight, 0, nostr.Tags{nostr.Tag{"e", actors.ConsensusTree, "", "reply"}})
+		return produceEvent(stateChangeEventID, bitcoinHeight, 1, nostr.Tags{nostr.Tag{"e", actors.ConsensusTree, "", "reply"}})
 	}
 	var heighest int64
 	var eventID library.Sha256

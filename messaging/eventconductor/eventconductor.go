@@ -43,7 +43,6 @@ var sendChan = make(chan nostr.Event)
 
 func Publish(event nostr.Event) {
 	go func() {
-		fmt.Println(45)
 		sendChan <- event
 		//fmt.Printf("\n48\n%#v\n", event)
 	}()
@@ -130,9 +129,11 @@ func publishConsensusTree(e nostr.Event) {
 			library.LogCLI(err, 1)
 			return
 		}
-		Publish(consensusEvent)
-		if err := consensustree.HandleEvent(consensusEvent); err != nil {
-			library.LogCLI(err, 1)
+		err = consensustree.HandleEvent(consensusEvent)
+		if err != nil {
+			library.LogCLI(err.Error(), 0)
+		} else {
+			Publish(consensusEvent)
 		}
 	}
 }

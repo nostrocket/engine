@@ -83,3 +83,39 @@ func (s *db) persistToDisk() {
 	}
 	actors.Write("consensustree", "current", b)
 }
+
+func GetMyLatest() (library.Sha256, int64) {
+	currentState.mutex.Lock()
+	defer currentState.mutex.Unlock()
+	return getMyLastest()
+}
+
+func getMyLastest() (library.Sha256, int64) {
+	var heighest int64
+	var eventID library.Sha256
+	//find the latest stateChangeEvent that we have signed
+	for i, m := range currentState.data {
+		for sha256, event := range m {
+			if event.IHaveSigned {
+				if i >= heighest && !event.IHaveReplaced {
+					eventID = sha256
+					heighest = i
+				}
+			}
+		}
+	}
+	if heighest > 0 && len(eventID) == 64 {
+		return eventID, heighest
+	}
+	return actors.ConsensusTree, 0
+}
+
+func GetMap() map[int64]map[library.Sha256]TreeEvent {
+	currentState.mutex.Lock()
+	defer currentState.mutex.Unlock()
+	return getMap()
+}
+
+func getMap() map[int64]map[library.Sha256]TreeEvent {
+	return currentState.data
+}
