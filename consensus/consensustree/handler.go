@@ -15,7 +15,7 @@ import (
 func HandleBatchAfterEOSE(m []nostr.Event, done *deadlock.WaitGroup, eventsToHandle chan library.Sha256, waitForCaller *deadlock.WaitGroup) {
 	//for each height, we find the inner event with the highest votepower and follow that, producing our own consensus event if we have votepower.
 	//if event is last one at height, return inner event id on channel. Then wait on waitForCaller before processing next one.
-	//var events [][]nostr.Event
+	var events [][]nostr.Event
 	var sorted []nostr.Event
 	for _, event := range m {
 		var unmarshalled Kind640064
@@ -36,8 +36,25 @@ func HandleBatchAfterEOSE(m []nostr.Event, done *deadlock.WaitGroup, eventsToHan
 		}
 		return true
 	})
+	var currentHeight int64
+	var currentEvents []nostr.Event
 	for _, event := range sorted {
-		fmt.Printf("\n%#v\n", event)
+		var unmarshalled Kind640064
+		json.Unmarshal([]byte(event.Content), &unmarshalled)
+		if currentHeight == unmarshalled.Height {
+			currentEvents = append(currentEvents, event)
+		}
+		if currentHeight+1 == unmarshalled.Height {
+			events = append(events, currentEvents)
+			currentEvents = []nostr.Event{event}
+			currentHeight++
+		}
+	}
+	for i, event := range events {
+		fmt.Printf("\n--------- HEIGHT %d ---------", i)
+		for _, n := range event {
+			fmt.Printf("\n%#v", n)
+		}
 	}
 }
 
