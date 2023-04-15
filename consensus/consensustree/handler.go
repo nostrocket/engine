@@ -3,6 +3,7 @@ package consensustree
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/sasha-s/go-deadlock"
@@ -11,9 +12,33 @@ import (
 	"nostrocket/engine/library"
 )
 
-func HandleBatchAfterEOSE(m map[library.Sha256]nostr.Event, wg *deadlock.WaitGroup, eventsToHandle chan library.Sha256) {
+func HandleBatchAfterEOSE(m []nostr.Event, done *deadlock.WaitGroup, eventsToHandle chan library.Sha256, waitForCaller *deadlock.WaitGroup) {
 	//for each height, we find the inner event with the highest votepower and follow that, producing our own consensus event if we have votepower.
-
+	//if event is last one at height, return inner event id on channel. Then wait on waitForCaller before processing next one.
+	//var events [][]nostr.Event
+	var sorted []nostr.Event
+	for _, event := range m {
+		var unmarshalled Kind640064
+		err := json.Unmarshal([]byte(event.Content), &unmarshalled)
+		if err != nil {
+			library.LogCLI("event "+event.ID+": "+err.Error(), 3)
+		} else {
+			sorted = append(sorted, event)
+		}
+	}
+	sort.Slice(sorted, func(i, j int) bool {
+		var unmarshalledi Kind640064
+		var unmarshalledj Kind640064
+		json.Unmarshal([]byte(sorted[i].Content), &unmarshalledi)
+		json.Unmarshal([]byte(sorted[j].Content), &unmarshalledj)
+		if unmarshalledi.Height > unmarshalledj.Height {
+			return false
+		}
+		return true
+	})
+	for _, event := range sorted {
+		fmt.Printf("\n%#v\n", event)
+	}
 }
 
 //handler
@@ -35,20 +60,20 @@ func HandleBatchAfterEOSE(m map[library.Sha256]nostr.Event, wg *deadlock.WaitGro
 //	s.data[key] = append(s.data[key], val)
 //}
 
-func HandleEvent(e nostr.Event) error {
+func HandleEvent(e nostr.Event) (library.Sha256, error) {
 	//todo return the event ID that we should process into state. This can be ignored if it's one that we just produced locally.
 	if shares.VotepowerForAccount(e.PubKey) < 1 {
-		return fmt.Errorf("%s has no votepower", e.PubKey)
+		return "", fmt.Errorf("%s has no votepower", e.PubKey)
 	}
 	startDb()
 	if !checkTags(e) {
-		return fmt.Errorf("%s is not replying to the current consensustree tip", e.ID)
+		return "", fmt.Errorf("%s is not replying to the current consensustree tip", e.ID)
 	}
 	var unmarshalled Kind640064
 	err := json.Unmarshal([]byte(e.Content), &unmarshalled)
 	if err != nil {
 		library.LogCLI(err.Error(), 3)
-		return err
+		return "", err
 	}
 	var current map[library.Sha256]TreeEvent
 	var exists bool
@@ -81,13 +106,24 @@ func HandleEvent(e nostr.Event) error {
 	for account, _ := range currentInner.Signers {
 		votepower = votepower + shares.VotepowerForAccount(account)
 	}
-	//todo get total current global votepower
+	totalVp, err := shares.TotalVotepower()
+	if err != nil {
+		return "", err
+	}
+	permille, err := shares.Permille(votepower, totalVp)
+	if err != nil {
+		return "", err
+	}
+	currentInner.Permille = permille
 	//todo if >500 permille, return the statechangeeventID so that we can process that event, and update our current state to the new height
 	//todo verify current bitcoin height, only upsert if claimed == current
 	fmt.Println(currentState.data[unmarshalled.Height])
 	currentState.data[unmarshalled.Height][unmarshalled.StateChangeEventID] = currentInner
 	currentState.persistToDisk()
-	return nil
+	if currentInner.Permille > 500 {
+		return currentInner.StateChangeEventID, nil
+	}
+	return "", nil
 }
 
 func checkTags(e nostr.Event) bool {

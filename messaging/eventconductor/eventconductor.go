@@ -67,9 +67,7 @@ func handleEvents() {
 			//if we are not at the current tip, it means we are in catchup mode, so when a mind thread hits a block tag, pause until global state reaches that block.
 			case <-eose:
 				eventCacheWg.Wait()
-				for _, event := range getAll640064() {
-					fmt.Println(event)
-				}
+				consensustree.HandleBatchAfterEOSE(getAll640064(), &deadlock.WaitGroup{}, make(chan library.Sha256), &deadlock.WaitGroup{})
 				//rebuild state from the consensus log
 				//send all the 640064 events to consensustree
 				//if height == currentheight+1 process
@@ -176,7 +174,7 @@ func publishConsensusTree(e nostr.Event) {
 			library.LogCLI(err, 1)
 			return
 		}
-		err = consensustree.HandleEvent(consensusEvent)
+		_, err = consensustree.HandleEvent(consensusEvent)
 		if err != nil {
 			library.LogCLI(err.Error(), 0)
 		} else {
