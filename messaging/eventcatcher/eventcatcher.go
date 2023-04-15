@@ -9,7 +9,7 @@ import (
 	"nostrocket/engine/library"
 )
 
-func SubscribeToTree(eChan chan nostr.Event, sendChan chan nostr.Event, eose chan struct{}) {
+func SubscribeToTree(eChan chan nostr.Event, sendChan chan nostr.Event, eose chan bool) {
 	relay, err := nostr.RelayConnect(context.Background(), actors.MakeOrGetConfig().GetStringSlice("relaysMust")[0])
 	if err != nil {
 		panic(err)
@@ -43,8 +43,8 @@ func SubscribeToTree(eChan chan nostr.Event, sendChan chan nostr.Event, eose cha
 
 	go func() {
 		<-sub.EndOfStoredEvents
-		eose <- struct{}{}
-		close(eose)
+		eose <- true
+		fmt.Println(47)
 		// handle end of stored events (EOSE, see NIP-15)
 		//todo process consensustree here, and begin storing new events in a separate place so we can play them after catchup if we have votepower
 		//subscribe to kind 640064
@@ -58,7 +58,7 @@ L:
 			}
 			if ev == nil {
 				library.LogCLI("Restarting Eventcatcher", 4)
-				go SubscribeToTree(eChan, sendChan, make(chan struct{}))
+				go SubscribeToTree(eChan, sendChan, eose)
 				break L
 			} else {
 				go func() {

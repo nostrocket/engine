@@ -3,6 +3,7 @@ package shares
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"os"
 
 	"github.com/nbd-wtf/go-nostr"
@@ -141,4 +142,37 @@ func VotepowerForAccount(account library.Account) int64 {
 		return shares.LeadTime * shares.LeadTimeLockedShares
 	}
 	return 0
+}
+
+func TotalVotepower() (int64, error) {
+	startDb()
+	currentState["nostrocket"].mutex.Lock()
+	defer currentState["nostrocket"].mutex.Unlock()
+	if data, ok := currentState["nostrocket"]; ok {
+		var total int64
+		for _, share := range data.data {
+			total = total + (share.LeadTimeLockedShares * share.LeadTime)
+		}
+		if total > (9223372036854775807 / 5) {
+			library.LogCLI("we are 20% of the way to an overflow bug", 1)
+		}
+		if total > (9223372036854775807 / 2) {
+			return 0, fmt.Errorf("we are 50%% of the way to an overflow bug")
+		}
+		return total, nil
+	}
+	return 0, fmt.Errorf("no nostrocket state in shares mind")
+}
+
+func Permille(signed, total int64) (int64, error) {
+	if signed > total {
+		return 0, fmt.Errorf("invalid permille, numerator %d is greater than denominator %d", signed, total)
+	}
+	s := new(big.Rat)
+	s.SetFrac64(signed, total)
+	m := new(big.Rat)
+	m.SetInt64(1000)
+	s = s.Mul(s, m)
+	i := s.Num()
+	return int64(i.Int64()), nil
 }

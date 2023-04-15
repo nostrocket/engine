@@ -52,16 +52,31 @@ func handleEvents() {
 	if !started {
 		started = true
 		actors.GetWaitGroup().Add(1)
-		go eventcatcher.SubscribeToTree(eventChan, sendChan, make(chan struct{}))
+		var eose = make(chan bool)
+		go eventcatcher.SubscribeToTree(eventChan, sendChan, eose)
 		var toReplay []nostr.Event
+
 	L:
 		for {
 			select {
 			case e := <-eventChan:
-				processEvent(e, &toReplay)
+				go addEventToCache(e)
+				//processEvent(e, &toReplay)
 			//if event is in direct reply to an event that is in state, try to handle it. if not, put it aside to try again later
 			//if we are at the current tip, then when we see a new block from a block source, tag all current leaf nodes
 			//if we are not at the current tip, it means we are in catchup mode, so when a mind thread hits a block tag, pause until global state reaches that block.
+			case <-eose:
+				eventCacheWg.Wait()
+				for _, event := range getAll640064() {
+					fmt.Println(event)
+				}
+				//rebuild state from the consensus log
+				//send all the 640064 events to consensustree
+				//if height == currentheight+1 process
+				//use a callback channel to request handling of embedded event, terminate if fail
+				//if > currentheight+1
+				//if current height and event ID have >500 permille, process embedded event, otherwise wait for more consensus events, unless we have votepower in which case: ...
+
 			case <-time.After(time.Second * 5):
 				var replayTemp []nostr.Event
 				for _, event := range toReplay {
@@ -78,6 +93,38 @@ func handleEvents() {
 			}
 		}
 	}
+}
+
+var eventCache = make(map[library.Sha256]nostr.Event)
+var eventCacheMu = &deadlock.Mutex{}
+var eventCacheWg = &deadlock.WaitGroup{}
+
+func addEventToCache(e nostr.Event) {
+	eventCacheWg.Add(1)
+	eventCacheMu.Lock()
+	eventCache[e.ID] = e
+	eventCacheMu.Unlock()
+	eventCacheWg.Done()
+}
+
+func getEventFromCache(eventID library.Sha256) (nostr.Event, bool) {
+	eventCacheWg.Wait()
+	eventCacheMu.Lock()
+	defer eventCacheMu.Unlock()
+	e, ok := eventCache[eventID]
+	return e, ok
+}
+
+func getAll640064() (el []nostr.Event) {
+	//todo filter so we only reutrn unique inner event + signer + height
+	eventCacheMu.Lock()
+	defer eventCacheMu.Unlock()
+	for _, event := range eventCache {
+		if event.Kind == 640064 {
+			el = append(el, event)
+		}
+	}
+	return
 }
 
 var printed = make(map[string]struct{})

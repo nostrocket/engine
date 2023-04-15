@@ -14,6 +14,9 @@ import (
 var lock = &deadlock.Mutex{}
 
 func ProduceEvent(stateChangeEventID library.Sha256, bitcoinHeight int64) (nostr.Event, error) {
+	//todo: problem: we will calculate votepower incorrectly on events that increase votepower becuase we increase votepower and THEN produce a consensus event.
+	//simplest solution: store the last votepower increase and consensus height and eventID of the event that did it in memory when handling an event that increases votewpoer. If we are at the same height
+	//and producing a consensus event for the event that just increased votepower, deduct the amount of votepower stored in memory for the account that increased it, and use that as the current votepower
 	lock.Lock()
 	defer lock.Unlock()
 	currentState.mutex.Lock()

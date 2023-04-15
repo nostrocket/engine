@@ -5,10 +5,16 @@ import (
 	"fmt"
 
 	"github.com/nbd-wtf/go-nostr"
+	"github.com/sasha-s/go-deadlock"
 	"nostrocket/consensus/shares"
 	"nostrocket/engine/actors"
 	"nostrocket/engine/library"
 )
+
+func HandleBatchAfterEOSE(m map[library.Sha256]nostr.Event, wg *deadlock.WaitGroup, eventsToHandle chan library.Sha256) {
+	//for each height, we find the inner event with the highest votepower and follow that, producing our own consensus event if we have votepower.
+
+}
 
 //handler
 //func (s *db) upsert(key int64, val TreeEvent) {
@@ -30,6 +36,7 @@ import (
 //}
 
 func HandleEvent(e nostr.Event) error {
+	//todo return the event ID that we should process into state. This can be ignored if it's one that we just produced locally.
 	if shares.VotepowerForAccount(e.PubKey) < 1 {
 		return fmt.Errorf("%s has no votepower", e.PubKey)
 	}
@@ -75,6 +82,7 @@ func HandleEvent(e nostr.Event) error {
 		votepower = votepower + shares.VotepowerForAccount(account)
 	}
 	//todo get total current global votepower
+	//todo if >500 permille, return the statechangeeventID so that we can process that event, and update our current state to the new height
 	//todo verify current bitcoin height, only upsert if claimed == current
 	fmt.Println(currentState.data[unmarshalled.Height])
 	currentState.data[unmarshalled.Height][unmarshalled.StateChangeEventID] = currentInner

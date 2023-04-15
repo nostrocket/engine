@@ -23,7 +23,7 @@ func main() {
 func handleEvents() {
 	rxChan := make(chan nostr.Event)
 	txChan := make(chan nostr.Event)
-	eose := make(chan struct{})
+	eose := make(chan bool)
 	go eventcatcher.SubscribeToTree(rxChan, txChan, eose)
 	m := make(map[string]nostr.Event)
 	handled := make(map[string]struct{})
