@@ -15,7 +15,7 @@ import (
 func HandleBatchAfterEOSE(m []nostr.Event, done *deadlock.WaitGroup, eventsToHandle chan library.Sha256, waitForCaller *deadlock.WaitGroup) {
 	//for each height, we find the inner event with the highest votepower and follow that, producing our own consensus event if we have votepower.
 	//if event is last one at height, return inner event id on channel. Then wait on waitForCaller before processing next one.
-	var events [][]nostr.Event
+	var eventsGroupedByHeight [][]nostr.Event
 	var sorted []nostr.Event
 	for _, event := range m {
 		var unmarshalled Kind640064
@@ -37,20 +37,20 @@ func HandleBatchAfterEOSE(m []nostr.Event, done *deadlock.WaitGroup, eventsToHan
 		return true
 	})
 	var currentHeight int64
-	var currentEvents []nostr.Event
-	for _, event := range sorted {
+	var newEvents []nostr.Event
+	for i, event := range sorted {
 		var unmarshalled Kind640064
 		json.Unmarshal([]byte(event.Content), &unmarshalled)
 		if currentHeight == unmarshalled.Height {
-			currentEvents = append(currentEvents, event)
+			newEvents = append(newEvents, event)
 		}
-		if currentHeight+1 == unmarshalled.Height {
-			events = append(events, currentEvents)
-			currentEvents = []nostr.Event{event}
+		if currentHeight+1 == unmarshalled.Height || i == len(sorted)-1 {
+			eventsGroupedByHeight = append(eventsGroupedByHeight, newEvents)
+			newEvents = []nostr.Event{event}
 			currentHeight++
 		}
 	}
-	for i, event := range events {
+	for i, event := range eventsGroupedByHeight {
 		fmt.Printf("\n--------- HEIGHT %d ---------", i)
 		for _, n := range event {
 			fmt.Printf("\n%#v", n)
@@ -132,9 +132,7 @@ func HandleEvent(e nostr.Event) (library.Sha256, error) {
 		return "", err
 	}
 	currentInner.Permille = permille
-	//todo if >500 permille, return the statechangeeventID so that we can process that event, and update our current state to the new height
 	//todo verify current bitcoin height, only upsert if claimed == current
-	fmt.Println(currentState.data[unmarshalled.Height])
 	currentState.data[unmarshalled.Height][unmarshalled.StateChangeEventID] = currentInner
 	currentState.persistToDisk()
 	if currentInner.Permille > 500 {
