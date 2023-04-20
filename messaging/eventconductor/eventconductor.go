@@ -55,19 +55,47 @@ func handleEvents() {
 		var eose = make(chan bool)
 		go eventcatcher.SubscribeToTree(eventChan, sendChan, eose)
 		var toReplay []nostr.Event
+		var reachedEose = false
 
 	L:
 		for {
 			select {
 			case e := <-eventChan:
-				go addEventToCache(e)
+				if !reachedEose {
+					go addEventToCache(e)
+				}
+				toReplay = append(toReplay, e)
 				//processEvent(e, &toReplay)
 			//if event is in direct reply to an event that is in state, try to handle it. if not, put it aside to try again later
 			//if we are at the current tip, then when we see a new block from a block source, tag all current leaf nodes
 			//if we are not at the current tip, it means we are in catchup mode, so when a mind thread hits a block tag, pause until global state reaches that block.
 			case <-eose:
+				reachedEose = true
 				eventCacheWg.Wait()
-				consensustree.HandleBatchAfterEOSE(getAll640064(), &deadlock.WaitGroup{}, make(chan library.Sha256), &deadlock.WaitGroup{})
+				toHandle := make(chan library.Sha256)
+				waitForConsensus := &deadlock.WaitGroup{}
+				var returnResult = make(chan bool)
+				go consensustree.HandleBatchAfterEOSE(getAll640064(), waitForConsensus, toHandle, returnResult)
+				go func() {
+					select {
+					case e := <-toHandle:
+						event, ok := getEventFromCache(e)
+						if !ok {
+							library.LogCLI("could not get event "+e, 2)
+							returnResult <- false
+						}
+						if ok {
+							if handleEvent(event) != nil {
+								fmt.Printf("\n%#v\n", event)
+								library.LogCLI("consenus inner event failed", 1)
+								returnResult <- false
+							} else {
+								returnResult <- true
+							}
+						}
+
+					}
+				}()
 				//rebuild state from the consensus log
 				//send all the 640064 events to consensustree
 				//if height == currentheight+1 process
@@ -75,7 +103,7 @@ func handleEvents() {
 				//if > currentheight+1
 				//if current height and event ID have >500 permille, process embedded event, otherwise wait for more consensus events, unless we have votepower in which case: ...
 
-			case <-time.After(time.Second * 5):
+			case <-time.After(time.Second * 10):
 				var replayTemp []nostr.Event
 				for _, event := range toReplay {
 					processEvent(event, &replayTemp)
@@ -83,8 +111,8 @@ func handleEvents() {
 				toReplay = []nostr.Event{}
 				toReplay = replayTemp
 			case <-actors.GetTerminateChan():
-				for _, event := range toReplay {
-					fmt.Printf("\n%#v\n", event)
+				for i, event := range toReplay {
+					fmt.Printf("\nReplay Queue %d%s\n", i, event.ID)
 				}
 				actors.GetWaitGroup().Done()
 				break L
@@ -131,38 +159,49 @@ func processEvent(e nostr.Event, toReplay *[]nostr.Event) {
 	eventsInStateLock.Lock()
 	defer eventsInStateLock.Unlock()
 	if _, exists := printed[e.ID]; !exists {
-		fmt.Printf("\n80: %s\n", e.ID)
+		//fmt.Printf("\n80: %s\n", e.ID)
 		printed[e.ID] = struct{}{}
 	}
 	if eventsInState.isDirectReply(e) {
-		if closer, returner, ok := replay.HandleEvent(e); ok {
-			eventsInState[e.ID] = e
-			fmt.Printf("\n---HANDLING EVENT---\n%#v\n--------\n", e)
-			mindName, mappedState, err := routeEvent(e)
-			if err != nil {
-				library.LogCLI(err.Error(), 2)
-				closer <- false
-				close(returner)
-			} else {
-				closer <- true
-				mappedReplay := <-returner
-				close(returner)
-				publishConsensusTree(e)
-				actors.AppendState("replay", mappedReplay)
-				n, _ := actors.AppendState(mindName, mappedState)
-				b, err := json.Marshal(n)
-				if err != nil {
-					library.LogCLI(err.Error(), 1)
-				} else {
-					fmt.Printf("%s", b)
-					Publish(actors.EventBuilder(fmt.Sprintf("%s", b)))
-				}
-			}
+		err := handleEvent(e)
+		if err != nil {
+			library.LogCLI(err.Error(), 1)
+			//todo do we need to replay here?
 		}
 	} else {
 		*toReplay = append(*toReplay, e)
 		//fmt.Println("TO REPLAY: ", e.ID)
 	}
+}
+
+func handleEvent(e nostr.Event) error {
+	closer, returner, ok := replay.HandleEvent(e)
+	if ok {
+		eventsInState[e.ID] = e
+		fmt.Printf("\n---HANDLING EVENT---\n%#v\n--------\n", e)
+		mindName, mappedState, err := routeEvent(e)
+		if err != nil {
+			closer <- false
+			close(returner)
+			return err
+		} else {
+			closer <- true
+			mappedReplay := <-returner
+			close(returner)
+			publishConsensusTree(e)
+			actors.AppendState("replay", mappedReplay)
+			n, _ := actors.AppendState(mindName, mappedState)
+			b, err := json.Marshal(n)
+			if err != nil {
+				return err
+			} else {
+				fmt.Printf("\n199: %s", b)
+				Publish(actors.EventBuilder(fmt.Sprintf("%s", b)))
+				return nil
+			}
+		}
+	}
+	return fmt.Errorf("invalid replay")
 }
 
 func publishConsensusTree(e nostr.Event) {
@@ -174,10 +213,11 @@ func publishConsensusTree(e nostr.Event) {
 			library.LogCLI(err, 1)
 			return
 		}
-		_, err = consensustree.HandleEvent(consensusEvent)
+		_, _, err = consensustree.HandleEvent(consensusEvent)
 		if err != nil {
 			library.LogCLI(err.Error(), 0)
 		} else {
+			fmt.Printf("\n221: %#v\n", consensusEvent)
 			Publish(consensusEvent)
 		}
 	}

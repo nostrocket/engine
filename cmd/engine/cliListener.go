@@ -48,7 +48,9 @@ func cliListener(interrupt chan struct{}) {
 			h, d := consensustree.GetMyLatest()
 			fmt.Printf("\n%s: %d\n", h, d)
 			for _, m := range consensustree.GetMap() {
-				fmt.Printf("\n%#v\n", m)
+				for _, event := range m {
+					fmt.Printf("\n%#v\n", event)
+				}
 			}
 		}
 	}

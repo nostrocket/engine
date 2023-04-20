@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -25,7 +26,16 @@ func main() {
 	printArt()
 	terminateChan := make(chan struct{})
 	actors.SetTerminateChan(terminateChan)
-	go cliListener(terminateChan)
+	if os.Getenv("NOSTROCKET_DEBUG") == "true" {
+		go func() {
+			select {
+			case <-time.After(time.Second * 30):
+				close(terminateChan)
+			}
+		}()
+	} else {
+		go cliListener(terminateChan)
+	}
 	wg := &deadlock.WaitGroup{}
 	actors.SetWaitGroup(wg)
 	eventconductor.Start()

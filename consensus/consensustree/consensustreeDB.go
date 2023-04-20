@@ -110,6 +110,26 @@ func getMyLastest() (library.Sha256, int64) {
 	return actors.ConsensusTree, 0
 }
 
+func getLatestHandled() (library.Sha256, int64) {
+	var heighest int64
+	var eventID library.Sha256
+	//find the latest stateChangeEvent that we have signed
+	for i, m := range currentState.data {
+		for sha256, event := range m {
+			if event.StateChangeEventHandled {
+				if i >= heighest {
+					eventID = sha256
+					heighest = i
+				}
+			}
+		}
+	}
+	if heighest > 0 && len(eventID) == 64 {
+		return eventID, heighest
+	}
+	return actors.ConsensusTree, 0
+}
+
 func GetMap() map[int64]map[library.Sha256]TreeEvent {
 	currentState.mutex.Lock()
 	defer currentState.mutex.Unlock()

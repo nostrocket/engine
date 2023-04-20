@@ -12,7 +12,9 @@ import (
 	"nostrocket/engine/library"
 )
 
-func HandleBatchAfterEOSE(m []nostr.Event, done *deadlock.WaitGroup, eventsToHandle chan library.Sha256, waitForCaller *deadlock.WaitGroup) {
+func HandleBatchAfterEOSE(m []nostr.Event, done *deadlock.WaitGroup, eventsToHandle chan library.Sha256, innerEventHandlerResult chan bool) {
+	done.Add(1)
+	defer done.Done()
 	//for each height, we find the inner event with the highest votepower and follow that, producing our own consensus event if we have votepower.
 	//if event is last one at height, return inner event id on channel. Then wait on waitForCaller before processing next one.
 	var eventsGroupedByHeight [][]nostr.Event
@@ -50,11 +52,46 @@ func HandleBatchAfterEOSE(m []nostr.Event, done *deadlock.WaitGroup, eventsToHan
 			currentHeight++
 		}
 	}
-	for i, event := range eventsGroupedByHeight {
-		fmt.Printf("\n--------- HEIGHT %d ---------", i)
+	for _, event := range eventsGroupedByHeight {
+		var innerEventToReturn library.Sha256
+		var treeEvent TreeEvent
 		for _, n := range event {
-			fmt.Printf("\n%#v", n)
+			tree, innerEvent, err := HandleEvent(n)
+			if err != nil {
+				fmt.Printf("\n61\n%#v\n", n)
+				library.LogCLI(err.Error(), 1)
+				continue
+			} else {
+				innerEventToReturn = innerEvent
+				treeEvent = tree
+			}
 		}
+		//if permille > 500 we handle the inner event at the end of each height
+		//if we have votepower, we handle the inner event as well, so that we can broadcast our signed consensus event
+		//if no votepower and not >500 permille, we stop at this height and return.
+		//todo if we have votepower we handle the inner event need to return regardless and then handle inner event which has the greatest votepower at this height
+		if (treeEvent.Permille > 500 || shares.VotepowerForAccount(actors.MyWallet().Account) > 0) && len(innerEventToReturn) == 64 {
+			eventsToHandle <- innerEventToReturn
+			result := <-innerEventHandlerResult
+			if result {
+				//put consensus event into state
+				fmt.Println(70, " ", innerEventToReturn, "success")
+				existing, exists := currentState.data[treeEvent.StateChangeEventHeight]
+				if !exists {
+					existing = make(map[library.Sha256]TreeEvent)
+				}
+				treeEvent.StateChangeEventHandled = true
+				existing[treeEvent.StateChangeEventID] = treeEvent
+				currentState.data[treeEvent.StateChangeEventHeight] = existing
+				currentState.persistToDisk()
+			}
+			if !result {
+				//do not put conesnsus event into state
+				fmt.Println(78, innerEventToReturn, "failed")
+			}
+		} //else {
+		//	return
+		//}
 	}
 }
 
@@ -77,43 +114,64 @@ func HandleBatchAfterEOSE(m []nostr.Event, done *deadlock.WaitGroup, eventsToHan
 //	s.data[key] = append(s.data[key], val)
 //}
 
-func HandleEvent(e nostr.Event) (library.Sha256, error) {
-	//todo return the event ID that we should process into state. This can be ignored if it's one that we just produced locally.
+func HandleEvent(e nostr.Event) (t TreeEvent, l library.Sha256, er error) {
+	//todo if we are on the wrong side of a fork (lowest votepower) set IHaveReplaced to true
+	//we can't check for our current latest height that we have signed becuase there might be multiples if we changed fork
 	if shares.VotepowerForAccount(e.PubKey) < 1 {
-		return "", fmt.Errorf("%s has no votepower", e.PubKey)
+		return t, l, fmt.Errorf("%s has no votepower", e.PubKey)
 	}
 	startDb()
 	if !checkTags(e) {
-		return "", fmt.Errorf("%s is not replying to the current consensustree tip", e.ID)
+		return t, l, fmt.Errorf("%s is not replying to the current consensustree tip", e.ID)
 	}
 	var unmarshalled Kind640064
 	err := json.Unmarshal([]byte(e.Content), &unmarshalled)
 	if err != nil {
 		library.LogCLI(err.Error(), 3)
-		return "", err
+		return t, l, err
 	}
+
 	var current map[library.Sha256]TreeEvent
 	var exists bool
 	current, exists = currentState.data[unmarshalled.Height]
 	if !exists {
 		current = make(map[library.Sha256]TreeEvent)
-		currentState.data[unmarshalled.Height] = current
+		//currentState.data[unmarshalled.Height] = current
 	}
 	currentInner, cIexists := current[unmarshalled.StateChangeEventID]
 	if !cIexists {
 		currentInner = TreeEvent{
-			StateChangeEventHeight: unmarshalled.Height,
-			StateChangeEventID:     unmarshalled.StateChangeEventID,
-			Signers:                make(map[library.Account]int64),
-			ConsensusEvents:        make(map[library.Sha256]nostr.Event),
-			IHaveSigned:            false,
-			IHaveReplaced:          false,
-			Votepower:              0,
-			TotalVotepoweAtHeight:  0,
-			Permille:               0,
-			BitcoinHeight:          0,
+			StateChangeEventHeight:  unmarshalled.Height,
+			StateChangeEventID:      unmarshalled.StateChangeEventID,
+			StateChangeEventHandled: false,
+			Signers:                 make(map[library.Account]int64),
+			ConsensusEvents:         make(map[library.Sha256]nostr.Event),
+			IHaveSigned:             false,
+			IHaveReplaced:           false,
+			Votepower:               0,
+			TotalVotepoweAtHeight:   0,
+			Permille:                0,
+			BitcoinHeight:           0,
 		}
 	}
+	//validate:
+	//if this event == current height &&
+	//if current height permille < 500 (could be new fork or could be same, doesn't matter) || innerEvent == this (means that we are just adding votepower)
+	latestHandledEvent, latestHandledHeight := getLatestHandled()
+	if unmarshalled.Height != latestHandledHeight && unmarshalled.Height != latestHandledHeight+1 {
+		return t, l, fmt.Errorf("invalid height on consensus event")
+	}
+	for _, event := range current {
+		if event.Permille == 1000 {
+			return t, l, fmt.Errorf("we already have 1000 permille for this height")
+		}
+	}
+	if unmarshalled.Height == latestHandledHeight {
+		if unmarshalled.StateChangeEventID != latestHandledEvent {
+			return t, l, fmt.Errorf("we have already handled a different event at this height, cannot process two different events at the same height without wreaking havoc, make reset if you need to follow a different fork")
+		}
+	}
+
 	currentInner.Signers[e.PubKey] = shares.VotepowerForAccount(e.PubKey)
 	currentInner.ConsensusEvents[e.ID] = e
 	if e.PubKey == actors.MyWallet().Account {
@@ -125,20 +183,28 @@ func HandleEvent(e nostr.Event) (library.Sha256, error) {
 	}
 	totalVp, err := shares.TotalVotepower()
 	if err != nil {
-		return "", err
+		fmt.Println(186)
+		return t, l, err
 	}
 	permille, err := shares.Permille(votepower, totalVp)
 	if err != nil {
-		return "", err
+		fmt.Println(191)
+		return t, l, err
 	}
 	currentInner.Permille = permille
 	//todo verify current bitcoin height, only upsert if claimed == current
-	currentState.data[unmarshalled.Height][unmarshalled.StateChangeEventID] = currentInner
-	currentState.persistToDisk()
-	if currentInner.Permille > 500 {
-		return currentInner.StateChangeEventID, nil
+	//currentState.data[unmarshalled.Height][unmarshalled.StateChangeEventID] = currentInner
+	//currentState.persistToDisk()
+	//todo we ae not persisting to disk in live mode
+	if currentInner.Permille < 1 {
+		return t, l, fmt.Errorf("permille is less than 1")
 	}
-	return "", nil
+	if currentInner.Permille > 0 {
+		fmt.Println(161)
+
+		return currentInner, currentInner.StateChangeEventID, nil
+	}
+	return t, l, fmt.Errorf("no inner")
 }
 
 func checkTags(e nostr.Event) bool {

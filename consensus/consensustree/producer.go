@@ -21,10 +21,13 @@ func ProduceEvent(stateChangeEventID library.Sha256, bitcoinHeight int64) (nostr
 	defer lock.Unlock()
 	currentState.mutex.Lock()
 	defer currentState.mutex.Unlock()
+	fmt.Println(24)
 	if len(currentState.data) == 0 && actors.MyWallet().Account == actors.IgnitionAccount {
+		fmt.Println(25)
 		//exception for first event
 		return produceEvent(stateChangeEventID, bitcoinHeight, 1, nostr.Tags{nostr.Tag{"e", actors.ConsensusTree, "", "reply"}})
 	}
+	fmt.Println(30)
 	var heighest int64
 	var eventID library.Sha256
 	//find the latest stateChangeEvent that we have signed
