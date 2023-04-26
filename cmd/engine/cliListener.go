@@ -14,7 +14,7 @@ import (
 
 // cliListener is a cheap and nasty way to speed up development cycles. It listens for keypresses and executes commands.
 func cliListener(interrupt chan struct{}) {
-	fmt.Println("Press:\nq: to quit\ns: to print shares\ni: to print identity\nw: to print your current wallet\nSee cliListener.go for more")
+	fmt.Println("VIEW CURRENT STATE:\ns: cap table\ni: identity table\nw: current wallet\nc: engine config\nC: state change events\nq: to quit\nSee cliListener.go for more")
 	for {
 		r, k, err := keyboard.GetSingleKey()
 		if err != nil {
@@ -36,7 +36,7 @@ func cliListener(interrupt chan struct{}) {
 		case "w":
 			fmt.Printf("Current Wallet: \n%s\n", actors.MyWallet().Account)
 			fmt.Printf("Current Votepower: \n%#v\n", shares.VotepowerForAccount(actors.MyWallet().Account))
-		case "I":
+		case "i":
 			for account, i := range identity.GetMap() {
 				fmt.Printf("ACCOUNT: %s\n%#v\n", account, i)
 			}

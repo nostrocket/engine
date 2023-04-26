@@ -72,6 +72,5 @@ func produceEvent(stateChangeEventID library.Sha256, bitcoinHeight int64) (nostr
 	}
 	n.ID = n.GetID()
 	n.Sign(actors.MyWallet().PrivateKey)
-	fmt.Printf("\n71: \n%#v\n", n)
 	return n, nil
 }

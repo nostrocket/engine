@@ -16,8 +16,6 @@ func HandleBatchAfterEOSE(m []nostr.Event, done *deadlock.WaitGroup, eventsToHan
 	currentState.mutex.Lock()
 	defer currentState.mutex.Unlock()
 	done.Add(1)
-	fmt.Println(19)
-	defer fmt.Println(20)
 	defer done.Done()
 	//for each height, we find the inner event with the highest votepower and follow that, producing our own consensus event if we have votepower.
 	//if event is last one at height, return inner event id on channel. Then wait on waitForCaller before processing next one.

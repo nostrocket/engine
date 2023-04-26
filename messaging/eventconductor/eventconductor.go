@@ -215,7 +215,6 @@ func handleEvent(e nostr.Event, catchupMode bool) error {
 			if err != nil {
 				return err
 			} else {
-				fmt.Printf("\n199: %s", b)
 				Publish(actors.EventBuilder(fmt.Sprintf("%s", b)))
 				return nil
 			}
@@ -237,7 +236,6 @@ func publishConsensusTree(e nostr.Event) {
 		if err != nil {
 			library.LogCLI(err.Error(), 0)
 		} else {
-			fmt.Printf("\n221: %#v\n", consensusEvent)
 			Publish(consensusEvent)
 		}
 	}
