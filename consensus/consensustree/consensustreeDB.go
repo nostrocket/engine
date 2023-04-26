@@ -84,30 +84,30 @@ func (s *db) persistToDisk() {
 	actors.Write("consensustree", "current", b)
 }
 
-func GetMyLatest() (library.Sha256, int64) {
+//func getMyLastest() (library.Sha256, int64) {
+//	var heighest int64
+//	var eventID library.Sha256
+//	//find the latest stateChangeEvent that we have signed
+//	for i, m := range currentState.data {
+//		for sha256, event := range m {
+//			if event.IHaveSigned {
+//				if i >= heighest && !event.IHaveReplaced {
+//					eventID = sha256
+//					heighest = i
+//				}
+//			}
+//		}
+//	}
+//	if heighest > 0 && len(eventID) == 64 {
+//		return eventID, heighest
+//	}
+//	return actors.ConsensusTree, 0
+//}
+
+func GetLatestHandled() (library.Sha256, int64) {
 	currentState.mutex.Lock()
 	defer currentState.mutex.Unlock()
-	return getMyLastest()
-}
-
-func getMyLastest() (library.Sha256, int64) {
-	var heighest int64
-	var eventID library.Sha256
-	//find the latest stateChangeEvent that we have signed
-	for i, m := range currentState.data {
-		for sha256, event := range m {
-			if event.IHaveSigned {
-				if i >= heighest && !event.IHaveReplaced {
-					eventID = sha256
-					heighest = i
-				}
-			}
-		}
-	}
-	if heighest > 0 && len(eventID) == 64 {
-		return eventID, heighest
-	}
-	return actors.ConsensusTree, 0
+	return getLatestHandled()
 }
 
 func getLatestHandled() (library.Sha256, int64) {
@@ -138,4 +138,29 @@ func GetMap() map[int64]map[library.Sha256]TreeEvent {
 
 func getMap() map[int64]map[library.Sha256]TreeEvent {
 	return currentState.data
+}
+
+func GetAllStateChangeEventsInOrder() []library.Sha256 {
+	currentState.mutex.Lock()
+	defer currentState.mutex.Unlock()
+	return getAllStateChangeEventsInOrder()
+}
+
+func getAllStateChangeEventsInOrder() (r []library.Sha256) {
+	_, i := getLatestHandled()
+	var x int64
+	for x = 0; x <= i; x++ {
+		var candidate library.Sha256
+		var biggestPermille int64
+		for _, t := range currentState.data[x] {
+			if t.StateChangeEventHandled {
+				if t.Permille > biggestPermille {
+					candidate = t.StateChangeEventID
+					biggestPermille = t.Permille
+				}
+			}
+		}
+		r = append(r, candidate)
+	}
+	return
 }

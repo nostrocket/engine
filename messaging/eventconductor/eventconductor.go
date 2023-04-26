@@ -3,7 +3,6 @@ package eventconductor
 import (
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/sasha-s/go-deadlock"
@@ -73,11 +72,23 @@ func handleEvents() {
 				reachedEose = true
 				eventCacheWg.Wait()
 				toHandle := make(chan library.Sha256)
+				consensusEventsToPublish := make(chan nostr.Event)
 				waitForConsensus := &deadlock.WaitGroup{}
 				var returnResult = make(chan bool)
-				go consensustree.HandleBatchAfterEOSE(getAll640064(), waitForConsensus, toHandle, returnResult)
+				go consensustree.HandleBatchAfterEOSE(getAll640064(), waitForConsensus, toHandle, consensusEventsToPublish, returnResult)
+				go func() {
+					waitForConsensus.Wait()
+					var replayTemp []nostr.Event
+					for _, event := range toReplay {
+						processEvent(event, &replayTemp)
+					}
+					toReplay = []nostr.Event{}
+					toReplay = replayTemp
+				}()
 				go func() {
 					select {
+					case e := <-consensusEventsToPublish:
+						fmt.Printf("\nCONSENSUS EVENT TO PUBLISH:\n%#v\n", e)
 					case e := <-toHandle:
 						event, ok := getEventFromCache(e)
 						if !ok {
@@ -85,9 +96,8 @@ func handleEvents() {
 							returnResult <- false
 						}
 						if ok {
-							if handleEvent(event) != nil {
-								fmt.Printf("\n%#v\n", event)
-								library.LogCLI("consenus inner event failed", 1)
+							if handleEvent(event, true) != nil {
+								library.LogCLI("consensus inner event failed", 1)
 								returnResult <- false
 							} else {
 								returnResult <- true
@@ -103,13 +113,13 @@ func handleEvents() {
 				//if > currentheight+1
 				//if current height and event ID have >500 permille, process embedded event, otherwise wait for more consensus events, unless we have votepower in which case: ...
 
-			case <-time.After(time.Second * 10):
-				var replayTemp []nostr.Event
-				for _, event := range toReplay {
-					processEvent(event, &replayTemp)
-				}
-				toReplay = []nostr.Event{}
-				toReplay = replayTemp
+			//case <-time.After(time.Second * 10):
+			//	var replayTemp []nostr.Event
+			//	for _, event := range toReplay {
+			//		processEvent(event, &replayTemp)
+			//	}
+			//	toReplay = []nostr.Event{}
+			//	toReplay = replayTemp
 			case <-actors.GetTerminateChan():
 				for i, event := range toReplay {
 					fmt.Printf("\nReplay Queue %d%s\n", i, event.ID)
@@ -141,6 +151,13 @@ func getEventFromCache(eventID library.Sha256) (nostr.Event, bool) {
 	return e, ok
 }
 
+func GetEventFromCache(id library.Sha256) (n nostr.Event) {
+	if e, ok := getEventFromCache(id); ok {
+		n = e
+	}
+	return
+}
+
 func getAll640064() (el []nostr.Event) {
 	//todo filter so we only reutrn unique inner event + signer + height
 	eventCacheMu.Lock()
@@ -163,9 +180,9 @@ func processEvent(e nostr.Event, toReplay *[]nostr.Event) {
 		printed[e.ID] = struct{}{}
 	}
 	if eventsInState.isDirectReply(e) {
-		err := handleEvent(e)
+		err := handleEvent(e, false)
 		if err != nil {
-			library.LogCLI(err.Error(), 1)
+			//library.LogCLI(err.Error(), 1)
 			//todo do we need to replay here?
 		}
 	} else {
@@ -174,11 +191,11 @@ func processEvent(e nostr.Event, toReplay *[]nostr.Event) {
 	}
 }
 
-func handleEvent(e nostr.Event) error {
+func handleEvent(e nostr.Event, catchupMode bool) error {
 	closer, returner, ok := replay.HandleEvent(e)
 	if ok {
 		eventsInState[e.ID] = e
-		fmt.Printf("\n---HANDLING EVENT---\n%#v\n--------\n", e)
+		//fmt.Printf("\n---HANDLING EVENT---\n%#v\n--------\n", e)
 		mindName, mappedState, err := routeEvent(e)
 		if err != nil {
 			closer <- false
@@ -188,7 +205,10 @@ func handleEvent(e nostr.Event) error {
 			closer <- true
 			mappedReplay := <-returner
 			close(returner)
-			publishConsensusTree(e)
+			library.LogCLI(fmt.Sprintf("Handled state change event %s catchup mode: %v", e.ID, catchupMode), 4)
+			if !catchupMode {
+				publishConsensusTree(e)
+			}
 			actors.AppendState("replay", mappedReplay)
 			n, _ := actors.AppendState(mindName, mappedState)
 			b, err := json.Marshal(n)
@@ -213,7 +233,7 @@ func publishConsensusTree(e nostr.Event) {
 			library.LogCLI(err, 1)
 			return
 		}
-		_, _, err = consensustree.HandleEvent(consensusEvent)
+		err = consensustree.HandleEvent(consensusEvent)
 		if err != nil {
 			library.LogCLI(err.Error(), 0)
 		} else {

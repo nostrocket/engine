@@ -7,7 +7,9 @@ import (
 	"nostrocket/consensus/consensustree"
 	"nostrocket/consensus/identity"
 	"nostrocket/consensus/replay"
+	"nostrocket/consensus/shares"
 	"nostrocket/engine/actors"
+	"nostrocket/messaging/eventconductor"
 )
 
 // cliListener is a cheap and nasty way to speed up development cycles. It listens for keypresses and executes commands.
@@ -32,7 +34,8 @@ func cliListener(interrupt chan struct{}) {
 		case "q":
 			close(interrupt)
 		case "w":
-			fmt.Printf("Current Wallet: \n%v\n", actors.MyWallet())
+			fmt.Printf("Current Wallet: \n%s\n", actors.MyWallet().Account)
+			fmt.Printf("Current Votepower: \n%#v\n", shares.VotepowerForAccount(actors.MyWallet().Account))
 		case "I":
 			for account, i := range identity.GetMap() {
 				fmt.Printf("ACCOUNT: %s\n%#v\n", account, i)
@@ -45,13 +48,19 @@ func cliListener(interrupt chan struct{}) {
 				fmt.Printf("\nKey: %s; Value: %v\n", k, v)
 			}
 		case "C":
-			h, d := consensustree.GetMyLatest()
-			fmt.Printf("\n%s: %d\n", h, d)
-			for _, m := range consensustree.GetMap() {
-				for _, event := range m {
-					fmt.Printf("\n%#v\n", event)
-				}
+			fmt.Println("ALL STATE CHANGE EVENTS IN ORDER THEY WERE HANDLED BY THIS ENGINE:")
+			for _, sha256 := range consensustree.GetAllStateChangeEventsInOrder() {
+				e := eventconductor.GetEventFromCache(sha256)
+				fmt.Printf("\nKind: %d Signed By: %s\nContent: %s\n", e.Kind, e.PubKey, e.Content)
 			}
+			fmt.Println("LATEST STATE CHANGE EVENT AND HEIGHT IN THE CONSENSUS TREE")
+			fmt.Println(consensustree.GetLatestHandled())
+
+			//for _, m := range consensustree.GetMap() {
+			//	for _, event := range m {
+			//		fmt.Printf("\n%#v\n", event)
+			//	}
+			//}
 		}
 	}
 }

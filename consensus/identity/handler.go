@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/nbd-wtf/go-nostr"
-	"nostrocket/engine/library"
 )
 
 func HandleEvent(event nostr.Event) (m Mapped, e error) {
@@ -24,7 +23,6 @@ func HandleEvent(event nostr.Event) (m Mapped, e error) {
 			var unmarshalled Kind640400
 			err := json.Unmarshal([]byte(event.Content), &unmarshalled)
 			if err != nil {
-				library.LogCLI(err.Error(), 3)
 				return m, err
 			} else {
 				if len(unmarshalled.Name) > 0 {
@@ -43,7 +41,6 @@ func HandleEvent(event nostr.Event) (m Mapped, e error) {
 			var unmarshalled Kind640402
 			err := json.Unmarshal([]byte(event.Content), &unmarshalled)
 			if err != nil {
-				library.LogCLI(err.Error(), 3)
 				return m, err
 			}
 			target, okt := currentState.data[unmarshalled.Target]
@@ -87,7 +84,6 @@ func HandleEvent(event nostr.Event) (m Mapped, e error) {
 			var unmarshalled Kind640406
 			err := json.Unmarshal([]byte(event.Content), &unmarshalled)
 			if err != nil {
-				library.LogCLI(err.Error(), 3)
 				return m, err
 			}
 			//todo validate bitcoin signed message

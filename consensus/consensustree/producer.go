@@ -21,39 +21,40 @@ func ProduceEvent(stateChangeEventID library.Sha256, bitcoinHeight int64) (nostr
 	defer lock.Unlock()
 	currentState.mutex.Lock()
 	defer currentState.mutex.Unlock()
-	fmt.Println(24)
+	//todo problem: newly created votepower doesn't produce consensenustree events
+	return produceEvent(stateChangeEventID, bitcoinHeight)
+}
+
+func produceEvent(stateChangeEventID library.Sha256, bitcoinHeight int64) (nostr.Event, error) {
+	var t = nostr.Tags{}
+	var eventHeight int64
+	t = append(t, nostr.Tag{"e", actors.IgnitionEvent, "", "root"})
 	if len(currentState.data) == 0 && actors.MyWallet().Account == actors.IgnitionAccount {
-		fmt.Println(25)
-		//exception for first event
-		return produceEvent(stateChangeEventID, bitcoinHeight, 1, nostr.Tags{nostr.Tag{"e", actors.ConsensusTree, "", "reply"}})
-	}
-	fmt.Println(30)
-	var heighest int64
-	var eventID library.Sha256
-	//find the latest stateChangeEvent that we have signed
-	for i, m := range currentState.data {
-		for sha256, event := range m {
-			if event.IHaveSigned {
-				if i >= heighest && !event.IHaveReplaced {
-					eventID = sha256
-					heighest = i
+		eventHeight = 1
+		t = append(t, nostr.Tag{"e", actors.ConsensusTree, "", "reply"})
+	} else {
+		var heighest int64
+		var eID library.Sha256
+		//find the latest stateChangeEvent that we have signed
+		for i, m := range currentState.data {
+			//todo: what about if we are new votepower and haven't signed anything yet?
+			for sha256, event := range m {
+				if event.IHaveSigned {
+					if i >= heighest && !event.IHaveReplaced {
+						eID = sha256
+						heighest = i
+					}
 				}
 			}
 		}
+		eventHeight = heighest
+		eventHeight++
+		if len(eID) != 64 {
+			return nostr.Event{}, fmt.Errorf("could not find latest state change event")
+		}
+		t = append(t, nostr.Tag{"e", eID, "", "reply"})
 	}
-	if heighest > 0 && len(eventID) == 64 {
-		return produceEvent(stateChangeEventID, bitcoinHeight, heighest+1, nostr.Tags{
-			nostr.Tag{"e", eventID, "", "reply"},
-		})
-	}
-	//todo problem: newly created votepower doesn't produce consensenustree events
-	return nostr.Event{}, fmt.Errorf("not implemented")
-}
 
-func produceEvent(stateChangeEventID library.Sha256, bitcoinHeight int64, eventHeight int64, tags nostr.Tags) (nostr.Event, error) {
-	var t = nostr.Tags{}
-	t = append(t, nostr.Tag{"e", actors.IgnitionEvent, "", "root"})
-	t = append(t, tags...)
 	j, err := json.Marshal(Kind640064{
 		StateChangeEventID: stateChangeEventID,
 		Height:             eventHeight,
@@ -71,5 +72,6 @@ func produceEvent(stateChangeEventID library.Sha256, bitcoinHeight int64, eventH
 	}
 	n.ID = n.GetID()
 	n.Sign(actors.MyWallet().PrivateKey)
+	fmt.Printf("\n71: \n%#v\n", n)
 	return n, nil
 }
