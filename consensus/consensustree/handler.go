@@ -61,7 +61,7 @@ func HandleBatchAfterEOSE(m []nostr.Event, done *deadlock.WaitGroup, eventsToHan
 			tree, innerEvent, err := handleEvent(n)
 			if err != nil {
 				//fmt.Printf("\n61\n%#v\n", n)
-				//library.LogCLI(err.Error(), 1)
+				//library.LogCLI(err.Error(), 2)
 				continue
 			} else {
 				innerEventToReturn = innerEvent
@@ -77,7 +77,7 @@ func HandleBatchAfterEOSE(m []nostr.Event, done *deadlock.WaitGroup, eventsToHan
 			result := <-innerEventHandlerResult
 			if result {
 				//put consensus event into state
-				fmt.Println(70, " ", innerEventToReturn, "success")
+				fmt.Println(86, " ", innerEventToReturn, "success")
 				existing, exists := currentState.data[treeEvent.StateChangeEventHeight]
 				if !exists {
 					existing = make(map[library.Sha256]TreeEvent)
@@ -99,7 +99,7 @@ func HandleBatchAfterEOSE(m []nostr.Event, done *deadlock.WaitGroup, eventsToHan
 			}
 			if !result {
 				//do not put conesnsus event into state
-				fmt.Println(102, innerEventToReturn, "failed")
+				fmt.Println(113, innerEventToReturn, "failed")
 			}
 		} //else {
 		//	return
@@ -213,12 +213,10 @@ func handleEvent(e nostr.Event) (t TreeEvent, l library.Sha256, er error) {
 	}
 	totalVp, err := shares.TotalVotepower()
 	if err != nil {
-		fmt.Println(186)
 		return t, l, err
 	}
 	permille, err := shares.Permille(votepower, totalVp)
 	if err != nil {
-		fmt.Println(191)
 		return t, l, err
 	}
 	currentInner.Permille = permille

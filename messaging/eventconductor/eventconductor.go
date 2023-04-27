@@ -86,24 +86,27 @@ func handleEvents() {
 					toReplay = replayTemp
 				}()
 				go func() {
-					select {
-					case e := <-consensusEventsToPublish:
-						fmt.Printf("\nCONSENSUS EVENT TO PUBLISH:\n%#v\n", e)
-					case e := <-toHandle:
-						event, ok := getEventFromCache(e)
-						if !ok {
-							library.LogCLI("could not get event "+e, 2)
-							returnResult <- false
-						}
-						if ok {
-							if handleEvent(event, true) != nil {
-								library.LogCLI("consensus inner event failed", 1)
+					for {
+						select {
+						case e := <-consensusEventsToPublish:
+							fmt.Printf("\nCONSENSUS EVENT TO PUBLISH:\n%#v\n", e)
+						case e := <-toHandle:
+							event, ok := getEventFromCache(e)
+							if !ok {
+								library.LogCLI("could not get event "+e, 2)
 								returnResult <- false
-							} else {
-								returnResult <- true
 							}
+							if ok {
+								if handleEvent(event, true) != nil {
+									library.LogCLI("consensus inner event failed", 1)
+									returnResult <- false
+								} else {
+									returnResult <- true
+								}
+							}
+						case <-actors.GetTerminateChan():
+							return
 						}
-
 					}
 				}()
 				//rebuild state from the consensus log
