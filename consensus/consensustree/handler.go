@@ -12,7 +12,10 @@ import (
 	"nostrocket/engine/library"
 )
 
+var handled = make(map[library.Sha256]struct{})
+
 func HandleBatchAfterEOSE(m []nostr.Event, done *deadlock.WaitGroup, eventsToHandle chan library.Sha256, consensusEventsToPublish chan nostr.Event, innerEventHandlerResult chan bool) {
+	//todo if there's more than one fork, simulate all of them to find the longest chain, and delete all our own consensus events from all other chains.
 	currentState.mutex.Lock()
 	defer currentState.mutex.Unlock()
 	done.Add(1)
@@ -58,15 +61,23 @@ func HandleBatchAfterEOSE(m []nostr.Event, done *deadlock.WaitGroup, eventsToHan
 		var innerEventToReturn library.Sha256
 		var treeEvent TreeEvent
 		for _, n := range event {
-			tree, innerEvent, err := handleEvent(n)
-			if err != nil {
-				//fmt.Printf("\n61\n%#v\n", n)
-				//library.LogCLI(err.Error(), 2)
-				continue
-			} else {
-				innerEventToReturn = innerEvent
-				treeEvent = tree
+			var unmarshalled Kind640064
+			err := json.Unmarshal([]byte(n.Content), &unmarshalled)
+
+			if err == nil {
+				if _, exists := handled[unmarshalled.StateChangeEventID]; !exists {
+					tree, innerEvent, err := handleConsensusEvent(n)
+					if err != nil {
+						//fmt.Printf("\n61\n%#v\n", n)
+						//library.LogCLI(err.Error(), 2)
+						continue
+					} else {
+						innerEventToReturn = innerEvent
+						treeEvent = tree
+					}
+				}
 			}
+
 		}
 		//if permille > 500 we handle the inner event at the end of each height
 		//if we have votepower, we handle the inner event as well, so that we can broadcast our signed consensus event
@@ -76,8 +87,8 @@ func HandleBatchAfterEOSE(m []nostr.Event, done *deadlock.WaitGroup, eventsToHan
 			eventsToHandle <- innerEventToReturn
 			result := <-innerEventHandlerResult
 			if result {
+				handled[treeEvent.StateChangeEventID] = struct{}{}
 				//put consensus event into state
-				fmt.Println(86, " ", innerEventToReturn, "success")
 				existing, exists := currentState.data[treeEvent.StateChangeEventHeight]
 				if !exists {
 					existing = make(map[library.Sha256]TreeEvent)
@@ -98,38 +109,19 @@ func HandleBatchAfterEOSE(m []nostr.Event, done *deadlock.WaitGroup, eventsToHan
 				currentState.persistToDisk()
 			}
 			if !result {
+				//todo delete the consensus event if its ours
 				//do not put conesnsus event into state
 				fmt.Println(113, innerEventToReturn, "failed")
+				continue
 			}
-		} //else {
-		//	return
-		//}
+		}
 	}
 }
-
-//handler
-//func (s *db) upsert(key int64, val TreeEvent) {
-//	if d, ok := s.data[val.StateChangeEventHeight]; !ok {
-//		d = make(map[library.Sha256]TreeEvent)
-//		s.data[val.StateChangeEventHeight] = d
-//	}
-//
-//	if d, ok := s.data[val.StateChangeEventHeight][val.StateChangeEventID];
-//	d, _ := s.data[val.StateChangeEventHeight]
-//	d[val.StateChangeEventID] = val
-//
-//	for _, event := range s.data[val.Height] {
-//		if event.Signer == val.Signer && event.StateChangeEventID == val.StateChangeEventID {
-//			return
-//		}
-//	}
-//	s.data[key] = append(s.data[key], val)
-//}
 
 func HandleEvent(n nostr.Event) error {
 	currentState.mutex.Lock()
 	defer currentState.mutex.Unlock()
-	tree, _, err := handleEvent(n)
+	tree, _, err := handleConsensusEvent(n)
 	if err != nil {
 		return err
 	}
@@ -144,7 +136,7 @@ func HandleEvent(n nostr.Event) error {
 	return nil
 }
 
-func handleEvent(e nostr.Event) (t TreeEvent, l library.Sha256, er error) {
+func handleConsensusEvent(e nostr.Event) (t TreeEvent, l library.Sha256, er error) {
 	//todo if we are on the wrong side of a fork (lowest votepower) set IHaveReplaced to true
 	//we can't check for our current latest height that we have signed becuase there might be multiples if we changed fork
 	if shares.VotepowerForAccount(e.PubKey) < 1 {

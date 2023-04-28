@@ -35,7 +35,6 @@ func Start() {
 	go handleEvents()
 }
 
-var eventChan = make(chan nostr.Event)
 var started = false
 
 var sendChan = make(chan nostr.Event)
@@ -47,29 +46,34 @@ func Publish(event nostr.Event) {
 	}()
 }
 
+func sendToCache(e chan nostr.Event) {
+	for event := range e {
+		addEventToCache(event)
+	}
+}
+
 func handleEvents() {
 	if !started {
 		started = true
 		actors.GetWaitGroup().Add(1)
 		var eose = make(chan bool)
+		var eventChan = make(chan nostr.Event)
+		go sendToCache(eventChan)
 		go eventcatcher.SubscribeToTree(eventChan, sendChan, eose)
 		var toReplay []nostr.Event
-		var reachedEose = false
-
 	L:
 		for {
 			select {
-			case e := <-eventChan:
-				if !reachedEose {
-					go addEventToCache(e)
-				}
-				toReplay = append(toReplay, e)
-				//processEvent(e, &toReplay)
-			//if event is in direct reply to an event that is in state, try to handle it. if not, put it aside to try again later
-			//if we are at the current tip, then when we see a new block from a block source, tag all current leaf nodes
-			//if we are not at the current tip, it means we are in catchup mode, so when a mind thread hits a block tag, pause until global state reaches that block.
+			//case e := <-eventChan:
+			//	if !reachedEose {
+			//		go addEventToCache(e)
+			//	}
+			//	toReplay = append(toReplay, e)
+			//	//processEvent(e, &toReplay)
+			////if event is in direct reply to an event that is in state, try to handle it. if not, put it aside to try again later
+			////if we are at the current tip, then when we see a new block from a block source, tag all current leaf nodes
+			////if we are not at the current tip, it means we are in catchup mode, so when a mind thread hits a block tag, pause until global state reaches that block.
 			case <-eose:
-				reachedEose = true
 				eventCacheWg.Wait()
 				toHandle := make(chan library.Sha256)
 				consensusEventsToPublish := make(chan nostr.Event)
@@ -90,6 +94,7 @@ func handleEvents() {
 						select {
 						case e := <-consensusEventsToPublish:
 							fmt.Printf("\nCONSENSUS EVENT TO PUBLISH:\n%#v\n", e)
+							//Publish(e)
 						case e := <-toHandle:
 							event, ok := getEventFromCache(e)
 							if !ok {
@@ -97,8 +102,8 @@ func handleEvents() {
 								returnResult <- false
 							}
 							if ok {
-								if handleEvent(event, true) != nil {
-									library.LogCLI("consensus inner event failed", 1)
+								if err := handleEvent(event, true); err != nil {
+									library.LogCLI(fmt.Sprintf("%s failed: %s", event.ID, err.Error()), 1)
 									returnResult <- false
 								} else {
 									returnResult <- true
@@ -195,6 +200,7 @@ func processEvent(e nostr.Event, toReplay *[]nostr.Event) {
 }
 
 func handleEvent(e nostr.Event, catchupMode bool) error {
+	library.LogCLI(fmt.Sprintf("Attempting to handle state change event %s catchup mode: %v", e.ID, catchupMode), 4)
 	closer, returner, ok := replay.HandleEvent(e)
 	if ok {
 		eventsInState[e.ID] = e
