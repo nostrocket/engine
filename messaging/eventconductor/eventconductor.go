@@ -3,6 +3,7 @@ package eventconductor
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/sasha-s/go-deadlock"
@@ -46,9 +47,19 @@ func Publish(event nostr.Event) {
 	}()
 }
 
-func sendToCache(e chan nostr.Event) {
-	for event := range e {
-		addEventToCache(event)
+func sendToCache(e chan nostr.Event, liveModeChan, liveModeConsensusChan chan nostr.Event) {
+	for {
+		select {
+		case event := <-e:
+			go func() {
+				if event.Kind == 640064 {
+					liveModeConsensusChan <- event
+				} else {
+					liveModeChan <- event
+				}
+			}()
+			addEventToCache(event)
+		}
 	}
 }
 
@@ -58,37 +69,19 @@ func handleEvents() {
 		actors.GetWaitGroup().Add(1)
 		var eose = make(chan bool)
 		var eventChan = make(chan nostr.Event)
-		go sendToCache(eventChan)
+		var liveModeStateChangeChan = make(chan nostr.Event)
+		var liveModeConsensusChan = make(chan nostr.Event)
+		go sendToCache(eventChan, liveModeStateChangeChan, liveModeConsensusChan)
 		go eventcatcher.SubscribeToTree(eventChan, sendChan, eose)
 		var toReplay []nostr.Event
 	L:
 		for {
 			select {
-			//case e := <-eventChan:
-			//	if !reachedEose {
-			//		go addEventToCache(e)
-			//	}
-			//	toReplay = append(toReplay, e)
-			//	//processEvent(e, &toReplay)
-			////if event is in direct reply to an event that is in state, try to handle it. if not, put it aside to try again later
-			////if we are at the current tip, then when we see a new block from a block source, tag all current leaf nodes
-			////if we are not at the current tip, it means we are in catchup mode, so when a mind thread hits a block tag, pause until global state reaches that block.
 			case <-eose:
 				eventCacheWg.Wait()
 				toHandle := make(chan library.Sha256)
 				consensusEventsToPublish := make(chan nostr.Event)
-				waitForConsensus := &deadlock.WaitGroup{}
 				var returnResult = make(chan bool)
-				go consensustree.HandleBatchAfterEOSE(getAll640064(), waitForConsensus, toHandle, consensusEventsToPublish, returnResult)
-				go func() {
-					waitForConsensus.Wait()
-					var replayTemp []nostr.Event
-					for _, event := range toReplay {
-						processEvent(event, &replayTemp)
-					}
-					toReplay = []nostr.Event{}
-					toReplay = replayTemp
-				}()
 				go func() {
 					for {
 						select {
@@ -114,26 +107,55 @@ func handleEvents() {
 						}
 					}
 				}()
-				//rebuild state from the consensus log
-				//send all the 640064 events to consensustree
-				//if height == currentheight+1 process
-				//use a callback channel to request handling of embedded event, terminate if fail
-				//if > currentheight+1
-				//if current height and event ID have >500 permille, process embedded event, otherwise wait for more consensus events, unless we have votepower in which case: ...
+				consensustree.HandleBatchAfterEOSE(getAll640064(), toHandle, consensusEventsToPublish, returnResult)
 
-			//case <-time.After(time.Second * 10):
-			//	var replayTemp []nostr.Event
-			//	for _, event := range toReplay {
-			//		processEvent(event, &replayTemp)
-			//	}
-			//	toReplay = []nostr.Event{}
-			//	toReplay = replayTemp
+				go handleEventsInLiveMode(liveModeStateChangeChan, liveModeConsensusChan)
 			case <-actors.GetTerminateChan():
 				for i, event := range toReplay {
 					fmt.Printf("\nReplay Queue %d%s\n", i, event.ID)
 				}
 				actors.GetWaitGroup().Done()
 				break L
+			}
+		}
+	}
+}
+
+var errors = make(map[library.Sha256]int64)
+
+func stopTryingThisEvent(e library.Sha256) bool {
+	num, exists := errors[e]
+	if exists {
+		if num > 10 {
+			return true
+		}
+	}
+	return false
+}
+
+func handleEventsInLiveMode(stateChange, consensus chan nostr.Event) {
+	//todo handle consensus events in live mode
+	for {
+		select {
+		case <-actors.GetTerminateChan():
+			return
+		case e := <-consensus:
+			err := consensustree.HandleEvent(e)
+			if err != nil {
+				library.LogCLI(err.Error(), 1)
+			}
+		case e := <-stateChange:
+			if stopTryingThisEvent(e.ID) {
+				continue
+			}
+			err := processEvent(e)
+			if err != nil {
+				library.LogCLI(err.Error(), 1)
+				errors[e.ID]++
+				go func() {
+					time.Sleep(time.Millisecond * 500)
+					stateChange <- e
+				}()
 			}
 		}
 	}
@@ -178,28 +200,38 @@ func getAll640064() (el []nostr.Event) {
 	return
 }
 
-var printed = make(map[string]struct{})
+func getAllStateChangeEventsFromCache() (el []nostr.Event) {
+	eventCacheWg.Wait()
+	eventCacheMu.Lock()
+	defer eventCacheMu.Unlock()
+	for _, event := range eventCache {
+		if event.Kind != 640064 {
+			el = append(el, event)
+		}
+	}
+	return
+}
 
-func processEvent(e nostr.Event, toReplay *[]nostr.Event) {
+func processEvent(e nostr.Event) error {
 	eventsInStateLock.Lock()
 	defer eventsInStateLock.Unlock()
-	if _, exists := printed[e.ID]; !exists {
-		//fmt.Printf("\n80: %s\n", e.ID)
-		printed[e.ID] = struct{}{}
+	if eventIsInState(e.ID) {
+		return nil
 	}
 	if eventsInState.isDirectReply(e) {
 		err := handleEvent(e, false)
 		if err != nil {
-			//library.LogCLI(err.Error(), 1)
-			//todo do we need to replay here?
+			return err
 		}
-	} else {
-		*toReplay = append(*toReplay, e)
-		//fmt.Println("TO REPLAY: ", e.ID)
+		return nil
 	}
+	return fmt.Errorf("event is not in direct reply to any other event in nostrocket state")
 }
 
 func handleEvent(e nostr.Event, catchupMode bool) error {
+	if eventIsInState(e.ID) {
+		return fmt.Errorf("event %s is already in our local state", e.ID)
+	}
 	library.LogCLI(fmt.Sprintf("Attempting to handle state change event %s catchup mode: %v", e.ID, catchupMode), 4)
 	closer, returner, ok := replay.HandleEvent(e)
 	if ok {
@@ -223,13 +255,22 @@ func handleEvent(e nostr.Event, catchupMode bool) error {
 			b, err := json.Marshal(n)
 			if err != nil {
 				return err
-			} else {
-				Publish(actors.EventBuilder(fmt.Sprintf("%s", b)))
+			}
+			if err == nil {
+				//publish our current state
+				Publish(actors.CurrentStateEventBuilder(fmt.Sprintf("%s", b)))
 				return nil
 			}
 		}
 	}
 	return fmt.Errorf("invalid replay")
+}
+
+func eventIsInState(e library.Sha256) bool {
+	eventsInStateLock.Lock()
+	defer eventsInStateLock.Unlock()
+	_, exists := eventsInState[e]
+	return exists
 }
 
 func publishConsensusTree(e nostr.Event) {

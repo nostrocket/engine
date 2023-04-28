@@ -40,7 +40,7 @@ func AppendState(name string, state any) (CurrentState, bool) {
 	return currentState, true
 }
 
-func EventBuilder(state string) nostr.Event {
+func CurrentStateEventBuilder(state string) nostr.Event {
 	e := nostr.Event{
 		PubKey:    MyWallet().Account,
 		CreatedAt: time.Now(),

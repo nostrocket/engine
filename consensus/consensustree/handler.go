@@ -6,7 +6,6 @@ import (
 	"sort"
 
 	"github.com/nbd-wtf/go-nostr"
-	"github.com/sasha-s/go-deadlock"
 	"nostrocket/consensus/shares"
 	"nostrocket/engine/actors"
 	"nostrocket/engine/library"
@@ -14,12 +13,10 @@ import (
 
 var handled = make(map[library.Sha256]struct{})
 
-func HandleBatchAfterEOSE(m []nostr.Event, done *deadlock.WaitGroup, eventsToHandle chan library.Sha256, consensusEventsToPublish chan nostr.Event, innerEventHandlerResult chan bool) {
+func HandleBatchAfterEOSE(m []nostr.Event, eventsToHandle chan library.Sha256, consensusEventsToPublish chan nostr.Event, innerEventHandlerResult chan bool) {
 	//todo if there's more than one fork, simulate all of them to find the longest chain, and delete all our own consensus events from all other chains.
 	currentState.mutex.Lock()
 	defer currentState.mutex.Unlock()
-	done.Add(1)
-	defer done.Done()
 	//for each height, we find the inner event with the highest votepower and follow that, producing our own consensus event if we have votepower.
 	//if event is last one at height, return inner event id on channel. Then wait on waitForCaller before processing next one.
 	var eventsGroupedByHeight [][]nostr.Event
@@ -82,7 +79,7 @@ func HandleBatchAfterEOSE(m []nostr.Event, done *deadlock.WaitGroup, eventsToHan
 		//if permille > 500 we handle the inner event at the end of each height
 		//if we have votepower, we handle the inner event as well, so that we can broadcast our signed consensus event
 		//if no votepower and not >500 permille, we stop at this height and return.
-		//todo if we have votepower we handle the inner event need to return regardless and then handle inner event which has the greatest votepower at this height
+		//todo if we have votepower we handle the inner event and need to return regardless and then handle inner event which has the greatest votepower at this height
 		if (treeEvent.Permille > 500 || shares.VotepowerForAccount(actors.MyWallet().Account) > 0) && len(innerEventToReturn) == 64 {
 			eventsToHandle <- innerEventToReturn
 			result := <-innerEventHandlerResult
