@@ -13,14 +13,6 @@ import (
 
 var handled = make(map[library.Sha256]struct{})
 
-//strategy
-//problem: we have different modes for live and catchup, this makes it really difficult to reason about event handling
-//solution:
-//unless we are the ignition account we ONLY progress after we have handled at least one consensus tree event.
-//we know that we are never starting from scratch, we are always starting from the ignition event.
-//what about if we do everything based on consensus events and only handle live events in specific situations:
-// if we have votepower, and we have not seen a new consensus event for > x ms (the more votepower we have, the less time we wait, try to avoid colissions), then we handle new state change events and send out consensus events.
-
 func HandleBatchAfterEOSE(m []nostr.Event, eventsToHandle chan library.Sha256, consensusEventsToPublish chan nostr.Event, innerEventHandlerResult chan bool) {
 	//todo if there's more than one fork, simulate all of them to find the longest chain, and delete all our own consensus events from all other chains.
 	currentState.mutex.Lock()

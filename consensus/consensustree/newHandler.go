@@ -70,13 +70,16 @@ func handleNewConsensusEvent(unmarshalled Kind640064, e nostr.Event, scEvent cha
 		events[e.ID] = e
 		return nil
 	}
+	if unmarshalled.Height < 1 {
+		return nil
+	}
 	for _, event := range current {
 		if event.Permille == 1000 {
-			return fmt.Errorf("we already have 1000 permille for this height")
+			return nil //fmt.Errorf("we already have 1000 permille for this height")
 		}
 		if event.StateChangeEventHandled {
 			if unmarshalled.StateChangeEventID != event.StateChangeEventID {
-				return fmt.Errorf("we have already handled a different event at this height, cannot process two different events at the same height without wreaking havoc, make reset if you need to follow a different fork")
+				return fmt.Errorf("we have already handled a different event at this height, cannot process two different events at the same height without wreaking havoc - todo: 4536g45")
 				//todo rebuild state if we see a different inner event getting >500 permille at this height. Delete our consensus event if we have produced one for this height and sign the >500 permille one instead.
 				//store a checkpoint for the >500 permille state at this height (store to disk) reset and rebuild state, and only validate consensus events with this state change event ID at this height.
 			}

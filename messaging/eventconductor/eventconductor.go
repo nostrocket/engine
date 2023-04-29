@@ -3,7 +3,6 @@ package eventconductor
 import (
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/sasha-s/go-deadlock"
@@ -64,6 +63,7 @@ func sendToCache(e chan nostr.Event, liveModeChan, liveModeConsensusChan chan no
 }
 
 func handleEvents() {
+	//todo only work from consensus events, unless we haven't seen any for >x seconds (1 / our permille * x * ms) AND have votepower.
 	if !started {
 		started = true
 		actors.GetWaitGroup().Add(1)
@@ -71,6 +71,7 @@ func handleEvents() {
 		var eventChan = make(chan nostr.Event)
 		var liveModeStateChangeChan = make(chan nostr.Event)
 		var liveModeConsensusChan = make(chan nostr.Event)
+		go handleEventsInLiveMode(liveModeStateChangeChan, liveModeConsensusChan)
 		go sendToCache(eventChan, liveModeStateChangeChan, liveModeConsensusChan)
 		go eventcatcher.SubscribeToTree(eventChan, sendChan, eose)
 		var toReplay []nostr.Event
@@ -78,38 +79,7 @@ func handleEvents() {
 		for {
 			select {
 			case <-eose:
-				eventCacheWg.Wait()
-				toHandle := make(chan library.Sha256)
-				consensusEventsToPublish := make(chan nostr.Event)
-				var returnResult = make(chan bool)
-				go func() {
-					for {
-						select {
-						case e := <-consensusEventsToPublish:
-							fmt.Printf("\nCONSENSUS EVENT TO PUBLISH:\n%#v\n", e)
-							//Publish(e)
-						case e := <-toHandle:
-							event, ok := getEventFromCache(e)
-							if !ok {
-								library.LogCLI("could not get event "+e, 2)
-								returnResult <- false
-							}
-							if ok {
-								if err := handleEvent(event, true); err != nil {
-									library.LogCLI(fmt.Sprintf("%s failed: %s", event.ID, err.Error()), 1)
-									returnResult <- false
-								} else {
-									returnResult <- true
-								}
-							}
-						case <-actors.GetTerminateChan():
-							return
-						}
-					}
-				}()
-				consensustree.HandleBatchAfterEOSE(getAll640064(), toHandle, consensusEventsToPublish, returnResult)
-
-				go handleEventsInLiveMode(liveModeStateChangeChan, liveModeConsensusChan)
+				//just keeping this here for now because probably need to do something
 			case <-actors.GetTerminateChan():
 				for i, event := range toReplay {
 					fmt.Printf("\nReplay Queue %d%s\n", i, event.ID)
@@ -140,25 +110,66 @@ func handleEventsInLiveMode(stateChange, consensus chan nostr.Event) {
 		case <-actors.GetTerminateChan():
 			return
 		case e := <-consensus:
-			err := consensustree.HandleEvent(e)
+			err := handleConsensusEvent(e)
 			if err != nil {
 				library.LogCLI(err.Error(), 1)
 			}
-		case e := <-stateChange:
-			if stopTryingThisEvent(e.ID) {
-				continue
-			}
-			err := processEvent(e)
-			if err != nil {
-				library.LogCLI(err.Error(), 1)
-				errors[e.ID]++
-				go func() {
-					time.Sleep(time.Millisecond * 500)
-					stateChange <- e
-				}()
-			}
+			//todo
+			//strategy
+			//problem: we have different modes for live and catchup, this makes it really difficult to reason about event handling
+			//solution:
+			//unless we are the ignition account we ONLY progress after we have handled at least one consensus tree event.
+			//we know that we are never starting from scratch, we are always starting from the ignition event.
+			//what about if we do everything based on consensus events and only handle live events in specific situations:
+			// if we have votepower, and we have not seen a new consensus event for > x ms (the more votepower we have, the less time we wait, try to avoid colissions), then we handle new state change events and send out consensus events.
+
+			//case e := <-stateChange:
+			//if stopTryingThisEvent(e.ID) {
+			//	continue
+			//}
+			//err := processEvent(e)
+			//if err != nil {
+			//	library.LogCLI(err.Error(), 1)
+			//	errors[e.ID]++
+			//	go func() {
+			//		time.Sleep(time.Millisecond * 500)
+			//		stateChange <- e
+			//	}()
+			//}
 		}
 	}
+}
+
+func handleConsensusEvent(e nostr.Event) error {
+	toHandle := make(chan library.Sha256)
+	consensusEventsToPublish := make(chan nostr.Event)
+	var returnResult = make(chan bool)
+	go func() {
+		for {
+			select {
+			case e := <-consensusEventsToPublish:
+				fmt.Printf("\nCONSENSUS EVENT TO PUBLISH:\n%#v\n", e)
+				//Publish(e)
+			case e := <-toHandle:
+				event, ok := getEventFromCache(e)
+				if !ok {
+					library.LogCLI("could not get event "+e, 2)
+					returnResult <- false
+				}
+				if ok {
+					if err := handleEvent(event, true); err != nil {
+						library.LogCLI(fmt.Sprintf("%s failed: %s", event.ID, err.Error()), 1)
+						returnResult <- false
+					} else {
+						returnResult <- true
+					}
+				}
+			case <-actors.GetTerminateChan():
+				return
+			}
+		}
+	}()
+	return consensustree.HandleConsensusEvent(e, toHandle, returnResult, consensusEventsToPublish)
 }
 
 var eventCache = make(map[library.Sha256]nostr.Event)
@@ -212,21 +223,22 @@ func getAllStateChangeEventsFromCache() (el []nostr.Event) {
 	return
 }
 
-func processEvent(e nostr.Event) error {
-	eventsInStateLock.Lock()
-	defer eventsInStateLock.Unlock()
-	if eventIsInState(e.ID) {
-		return nil
-	}
-	if eventsInState.isDirectReply(e) {
-		err := handleEvent(e, false)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-	return fmt.Errorf("event is not in direct reply to any other event in nostrocket state")
-}
+//
+//func processEvent(e nostr.Event) error {
+//	eventsInStateLock.Lock()
+//	defer eventsInStateLock.Unlock()
+//	if eventIsInState(e.ID) {
+//		return nil
+//	}
+//	if eventsInState.isDirectReply(e) {
+//		err := handleEvent(e, false)
+//		if err != nil {
+//			return err
+//		}
+//		return nil
+//	}
+//	return fmt.Errorf("event is not in direct reply to any other event in nostrocket state")
+//}
 
 func handleEvent(e nostr.Event, catchupMode bool) error {
 	if eventIsInState(e.ID) {
