@@ -240,11 +240,11 @@ func getAllStateChangeEventsFromCache() (el []nostr.Event) {
 //	return fmt.Errorf("event is not in direct reply to any other event in nostrocket state")
 //}
 
-func handleEvent(e nostr.Event, catchupMode bool) error {
+func handleEvent(e nostr.Event, fromConsensusEvent bool) error {
 	if eventIsInState(e.ID) {
 		return fmt.Errorf("event %s is already in our local state", e.ID)
 	}
-	library.LogCLI(fmt.Sprintf("Attempting to handle state change event %s catchup mode: %v", e.ID, catchupMode), 4)
+	library.LogCLI(fmt.Sprintf("Attempting to handle state change event %s consensus mode: %v", e.ID, fromConsensusEvent), 4)
 	closer, returner, ok := replay.HandleEvent(e)
 	if ok {
 		eventsInState[e.ID] = e
@@ -258,10 +258,11 @@ func handleEvent(e nostr.Event, catchupMode bool) error {
 			closer <- true
 			mappedReplay := <-returner
 			close(returner)
-			library.LogCLI(fmt.Sprintf("Handled state change event %s catchup mode: %v", e.ID, catchupMode), 4)
-			if !catchupMode {
-				publishConsensusTree(e)
-			}
+			library.LogCLI(fmt.Sprintf("Handled state change event %s consensus mode: %v", e.ID, fromConsensusEvent), 4)
+			//removed because getting everything nice and clean wrt just following conesnsus events, will deal with non-consensus state change events later
+			//if !fromConsensusEvent {
+			//	publishConsensusTree(e)
+			//}
 			actors.AppendState("replay", mappedReplay)
 			n, _ := actors.AppendState(mindName, mappedState)
 			b, err := json.Marshal(n)
@@ -285,23 +286,23 @@ func eventIsInState(e library.Sha256) bool {
 	return exists
 }
 
-func publishConsensusTree(e nostr.Event) {
-	if shares.VotepowerForAccount(actors.MyWallet().Account) > 0 {
-		//todo get current bitcoin height
-
-		consensusEvent, err := consensustree.ProduceEvent(e.ID, 0)
-		if err != nil {
-			library.LogCLI(err, 1)
-			return
-		}
-		err = consensustree.HandleEvent(consensusEvent)
-		if err != nil {
-			library.LogCLI(err.Error(), 0)
-		} else {
-			Publish(consensusEvent)
-		}
-	}
-}
+//func publishConsensusTree(e nostr.Event) {
+//	if shares.VotepowerForAccount(actors.MyWallet().Account) > 0 {
+//		//todo get current bitcoin height
+//
+//		consensusEvent, err := consensustree.ProduceEvent(e.ID, 0)
+//		if err != nil {
+//			library.LogCLI(err, 1)
+//			return
+//		}
+//		err = consensustree.HandleEvent(consensusEvent)
+//		if err != nil {
+//			library.LogCLI(err.Error(), 0)
+//		} else {
+//			Publish(consensusEvent)
+//		}
+//	}
+//}
 
 func routeEvent(e nostr.Event) (mindName string, newState any, err error) {
 	switch k := e.Kind; {

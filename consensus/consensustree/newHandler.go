@@ -11,7 +11,6 @@ import (
 	"nostrocket/engine/library"
 )
 
-//collect 640064 events until we reach >500 permille for the next height
 var events = make(map[library.Sha256]nostr.Event)
 
 //HandleConsensusEvent e: the consensus event (kind 640064) to handle
@@ -190,4 +189,18 @@ func produceConsensusEvent(data Kind640064) (nostr.Event, error) {
 	n.ID = n.GetID()
 	n.Sign(actors.MyWallet().PrivateKey)
 	return n, nil
+}
+
+func checkTags(e nostr.Event) bool {
+	hash, _ := getLatestHandled()
+	for _, tag := range e.Tags {
+		if len(tag) == 4 {
+			if tag[0] == "e" {
+				if tag[1] == hash {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }

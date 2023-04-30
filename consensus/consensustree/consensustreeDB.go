@@ -55,7 +55,7 @@ func start(ready chan struct{}) {
 		library.LogCLI(err.Error(), 0)
 	}
 	actors.Write("consensustree", "current", b)
-	currentState.persistToDisk()
+	//currentState.persistToDisk()
 	actors.GetWaitGroup().Done()
 	library.LogCLI("Consensus Tree Mind has shut down", 4)
 }
@@ -76,13 +76,13 @@ func (s *db) restoreFromDisk(f *os.File) {
 }
 
 // persistToDisk persists the current state to disk
-func (s *db) persistToDisk() {
-	b, err := json.MarshalIndent(s.data, "", " ")
-	if err != nil {
-		library.LogCLI(err.Error(), 0)
-	}
-	actors.Write("consensustree", "current", b)
-}
+//func (s *db) persistToDisk() {
+//	b, err := json.MarshalIndent(s.data, "", " ")
+//	if err != nil {
+//		library.LogCLI(err.Error(), 0)
+//	}
+//	actors.Write("consensustree", "current", b)
+//}
 
 //func getMyLastest() (library.Sha256, int64) {
 //	var heighest int64
