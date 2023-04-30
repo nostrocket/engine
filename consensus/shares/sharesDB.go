@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"sort"
 
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/sasha-s/go-deadlock"
@@ -175,4 +176,35 @@ func Permille(signed, total int64) (int64, error) {
 	s = s.Mul(s, m)
 	i := s.Num()
 	return int64(i.Int64()), nil
+}
+
+func GetPosition(account library.Account) int64 {
+	startDb()
+	currentState["nostrocket"].mutex.Lock()
+	defer currentState["nostrocket"].mutex.Unlock()
+	var shares []struct {
+		acc       library.Account
+		votepower int64
+	}
+	m := getMapped()
+	if d, ok := m["nostrocket"]; ok {
+		for l, share := range d {
+			shares = append(shares, struct {
+				acc       library.Account
+				votepower int64
+			}{acc: l, votepower: share.LeadTime * share.LeadTimeLockedShares})
+		}
+	}
+	sort.Slice(shares, func(i, j int) bool {
+		if shares[i].votepower > shares[j].votepower {
+			return true
+		}
+		return false
+	})
+	for i, share := range shares {
+		if share.acc == account {
+			return int64(i) + 1
+		}
+	}
+	return 0
 }
