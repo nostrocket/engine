@@ -55,6 +55,11 @@ func handleEvents() {
 		stack := library.NewEventStack(1)
 		var eose bool
 		go eventcatcher.SubscribeToTree(eventChan, publishChan, eoseChan)
+		var timeToWaitBeforeHandlingNewStateChangeEvents time.Duration
+		votepowerPosition := shares.GetPosition(actors.MyWallet().Account)
+		if votepowerPosition > 0 {
+			timeToWaitBeforeHandlingNewStateChangeEvents = time.Duration(votepowerPosition * 1000000 * 100)
+		}
 	L:
 		for {
 			select {
@@ -70,10 +75,10 @@ func handleEvents() {
 				} else {
 					stack.Push(&event)
 				}
-			case <-time.After(time.Millisecond * 100):
+			case <-time.After(timeToWaitBeforeHandlingNewStateChangeEvents):
 				//todo change second to 150ms * <inverse of our account's votepower position>
 				//todo create exception for ignition event if we are ignition account
-				if eose && shares.VotepowerForAccount(actors.MyWallet().Account) > 0 {
+				if eose && shares.VotepowerForAccount(actors.MyWallet().Account) > 0 && votepowerPosition > 0 {
 					event, ok := stack.Pop()
 					if ok {
 						//fmt.Println(event.Content)
