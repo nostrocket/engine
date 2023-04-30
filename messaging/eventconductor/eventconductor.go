@@ -60,6 +60,7 @@ func handleEvents() {
 		if votepowerPosition > 0 {
 			timeToWaitBeforeHandlingNewStateChangeEvents = time.Duration(votepowerPosition * 1000000 * 100)
 		}
+		lastReplayHash := replay.GetStateHash()
 	L:
 		for {
 			select {
@@ -81,15 +82,14 @@ func handleEvents() {
 				if eose && shares.VotepowerForAccount(actors.MyWallet().Account) > 0 && votepowerPosition > 0 {
 					event, ok := stack.Pop()
 					if ok {
-						//fmt.Println(event.Content)
-						err := handleEvent(*event, false)
-						if err != nil {
-							library.LogCLI(err.Error(), 2)
-						}
-						if err == nil {
-							err = consensustree.CreateNewConsensusEvent(*event, publishChan)
-							if err != nil {
-								library.LogCLI(err.Error(), 1)
+						processStateChangeEventOutOfConsensus(event)
+					}
+					if !ok {
+						if replay.GetStateHash() != lastReplayHash {
+							library.LogCLI("Replaying previously failed state change events", 4)
+							lastReplayHash = replay.GetStateHash()
+							for _, n := range getAllUnhandledStateChangeEventsFromCache() {
+								processStateChangeEventOutOfConsensus(&n)
 							}
 						}
 					}
@@ -99,6 +99,19 @@ func handleEvents() {
 				actors.GetWaitGroup().Done()
 				break L
 			}
+		}
+	}
+}
+
+func processStateChangeEventOutOfConsensus(event *nostr.Event) {
+	err := handleEvent(*event, false)
+	if err != nil {
+		library.LogCLI(err.Error(), 2)
+	}
+	if err == nil {
+		err = consensustree.CreateNewConsensusEvent(*event, publishChan)
+		if err != nil {
+			library.LogCLI(err.Error(), 1)
 		}
 	}
 }
@@ -113,42 +126,6 @@ func stopTryingThisEvent(e library.Sha256) bool {
 		}
 	}
 	return false
-}
-
-func handleEventsInLiveMode(stateChange, consensus chan nostr.Event) {
-	for {
-		select {
-		case <-actors.GetTerminateChan():
-			return
-		case e := <-consensus:
-			err := handleConsensusEvent(e)
-			if err != nil {
-				library.LogCLI(err.Error(), 1)
-			}
-			//todo
-			//strategy
-			//problem: we have different modes for live and catchup, this makes it really difficult to reason about event handling
-			//solution:
-			//unless we are the ignition account we ONLY progress after we have handled at least one consensus tree event.
-			//we know that we are never starting from scratch, we are always starting from the ignition event.
-			//what about if we do everything based on consensus events and only handle live events in specific situations:
-			// if we have votepower, and we have not seen a new consensus event for > x ms (the more votepower we have, the less time we wait, try to avoid colissions), then we handle new state change events and send out consensus events.
-
-			//case e := <-stateChange:
-			//if stopTryingThisEvent(e.ID) {
-			//	continue
-			//}
-			//err := processEvent(e)
-			//if err != nil {
-			//	library.LogCLI(err.Error(), 1)
-			//	errors[e.ID]++
-			//	go func() {
-			//		time.Sleep(time.Millisecond * 500)
-			//		stateChange <- e
-			//	}()
-			//}
-		}
-	}
 }
 
 func handleConsensusEvent(e nostr.Event) error {
@@ -222,13 +199,15 @@ func getAll640064() (el []nostr.Event) {
 	return
 }
 
-func getAllStateChangeEventsFromCache() (el []nostr.Event) {
+func getAllUnhandledStateChangeEventsFromCache() (el []nostr.Event) {
 	eventCacheWg.Wait()
 	eventCacheMu.Lock()
 	defer eventCacheMu.Unlock()
 	for _, event := range eventCache {
 		if event.Kind != 640064 {
-			el = append(el, event)
+			if !eventIsInState(event.ID) {
+				el = append(el, event)
+			}
 		}
 	}
 	return
@@ -269,10 +248,6 @@ func handleEvent(e nostr.Event, fromConsensusEvent bool) error {
 			mappedReplay := <-returner
 			close(returner)
 			library.LogCLI(fmt.Sprintf("Handled state change event %s consensus mode: %v", e.ID, fromConsensusEvent), 3)
-			//removed because getting everything nice and clean wrt just following conesnsus events, will deal with non-consensus state change events later
-			//if !fromConsensusEvent {
-			//	publishConsensusTree(e)
-			//}
 			actors.AppendState("replay", mappedReplay)
 			n, _ := actors.AppendState(mindName, mappedState)
 			b, err := json.Marshal(n)
@@ -296,24 +271,6 @@ func eventIsInState(e library.Sha256) bool {
 	_, exists := eventsInState[e]
 	return exists
 }
-
-//func publishConsensusTree(e nostr.Event) {
-//	if shares.VotepowerForAccount(actors.MyWallet().Account) > 0 {
-//		//todo get current bitcoin height
-//
-//		consensusEvent, err := consensustree.ProduceEvent(e.ID, 0)
-//		if err != nil {
-//			library.LogCLI(err, 1)
-//			return
-//		}
-//		err = consensustree.HandleEvent(consensusEvent)
-//		if err != nil {
-//			library.LogCLI(err.Error(), 0)
-//		} else {
-//			Publish(consensusEvent)
-//		}
-//	}
-//}
 
 func routeEvent(e nostr.Event) (mindName string, newState any, err error) {
 	//todo get current state from each Mind, and verify that state was actually changed, return error if not

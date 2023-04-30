@@ -175,7 +175,7 @@ func Permille(signed, total int64) (int64, error) {
 	m.SetInt64(1000)
 	s = s.Mul(s, m)
 	i := s.Num()
-	return int64(i.Int64()), nil
+	return i.Int64(), nil
 }
 
 func GetPosition(account library.Account) int64 {

@@ -1,8 +1,11 @@
 package replay
 
 import (
+	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"os"
+	"sort"
 
 	"github.com/sasha-s/go-deadlock"
 	"nostrocket/engine/actors"
@@ -113,4 +116,29 @@ func getCurrentHashForAccount(account library.Account) string {
 		return hash
 	}
 	return actors.ReplayPrevention
+}
+
+func GetStateHash() library.Sha256 {
+	currentState.mutex.Lock()
+	defer currentState.mutex.Unlock()
+	m := getMap()
+	var sl []library.Account
+	for account, _ := range m {
+		sl = append(sl, account)
+	}
+	sort.Slice(sl, func(i, j int) bool {
+		if sl[i] > sl[j] {
+			return true
+		}
+		return false
+	})
+	b := bytes.Buffer{}
+	for _, account := range sl {
+		decodedString, err := hex.DecodeString(m[account])
+		if err != nil {
+			library.LogCLI(err, 0)
+		}
+		b.Write(decodedString)
+	}
+	return library.Sha256Sum(b.Bytes())
 }
