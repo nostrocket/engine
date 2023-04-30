@@ -28,10 +28,10 @@ func HandleConsensusEvent(e nostr.Event, scEvent chan library.Sha256, scResult c
 	}
 	currentState.mutex.Lock()
 	defer currentState.mutex.Unlock()
-	return handleNewConsensusEvent(unmarshalled, e, scEvent, scResult, cPublish)
+	return handleNewConsensusEvent(unmarshalled, e, scEvent, scResult, cPublish, false)
 }
 
-func handleNewConsensusEvent(unmarshalled Kind640064, e nostr.Event, scEvent chan library.Sha256, scResult chan bool, cPublish chan nostr.Event) error {
+func handleNewConsensusEvent(unmarshalled Kind640064, e nostr.Event, scEvent chan library.Sha256, scResult chan bool, cPublish chan nostr.Event, localEvent bool) error {
 	if shares.VotepowerForAccount(e.PubKey) < 1 {
 		events[e.ID] = e
 		return nil
@@ -121,6 +121,9 @@ func handleNewConsensusEvent(unmarshalled Kind640064, e nostr.Event, scEvent cha
 	//solution: rebuild state if we see a different inner event getting >500 permille at this height
 	//we should always work from checkpointed state if it exists, store local checkpoints every time we pass 500 permille.
 	if currentInner.StateChangeEventHeight == latestHandledHeight+1 {
+		if localEvent {
+			currentInner.StateChangeEventHandled = true
+		}
 		if !currentInner.StateChangeEventHandled {
 			scEvent <- currentInner.StateChangeEventID
 			result := <-scResult
@@ -150,6 +153,30 @@ func handleNewConsensusEvent(unmarshalled Kind640064, e nostr.Event, scEvent cha
 	}
 	current[unmarshalled.StateChangeEventID] = currentInner
 	currentState.data[currentInner.StateChangeEventHeight] = current
+	return nil
+}
+
+func CreateNewConsensusEvent(e nostr.Event, publish chan nostr.Event) error {
+	if shares.VotepowerForAccount(actors.MyWallet().Account) < 1 {
+		return fmt.Errorf("current wallet has no votepower")
+	}
+	currentState.mutex.Lock()
+	defer currentState.mutex.Unlock()
+	_, height := getLatestHandled()
+	inner := Kind640064{
+		StateChangeEventID: e.ID,
+		Height:             height + 1,
+		BitcoinHeight:      0, //todo bitcoin height
+	}
+	newConsensusEvent, err := produceConsensusEvent(inner)
+	if err != nil {
+		return err
+	}
+	err = handleNewConsensusEvent(inner, newConsensusEvent, make(chan library.Sha256), make(chan bool), make(chan nostr.Event), true)
+	if err != nil {
+		return err
+	}
+	publish <- newConsensusEvent
 	return nil
 }
 

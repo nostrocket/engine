@@ -3,6 +3,7 @@ package eventconductor
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/sasha-s/go-deadlock"
@@ -22,7 +23,6 @@ var eventsInState = make(EventMap)
 var eventsInStateLock = &deadlock.Mutex{}
 
 func Start() {
-	//todo load events in state from current state
 	eventsInStateLock.Lock()
 	eventsInState[actors.IgnitionEvent] = nostr.Event{}
 	eventsInState[actors.StateChangeRequests] = nostr.Event{}
@@ -35,55 +35,62 @@ func Start() {
 	go handleEvents()
 }
 
-var started = false
+var started = make(map[string]bool)
 
-var sendChan = make(chan nostr.Event)
+var publishChan = make(chan nostr.Event)
 
 func Publish(event nostr.Event) {
 	go func() {
-		sendChan <- event
+		publishChan <- event
 		//fmt.Printf("\n48\n%#v\n", event)
 	}()
 }
 
-func sendToCache(e chan nostr.Event, liveModeChan, liveModeConsensusChan chan nostr.Event) {
-	for {
-		select {
-		case event := <-e:
-			go func() {
-				if event.Kind == 640064 {
-					liveModeConsensusChan <- event
-				} else {
-					liveModeChan <- event
-				}
-			}()
-			addEventToCache(event)
-		}
-	}
-}
-
 func handleEvents() {
-	//todo only work from consensus events, unless we haven't seen any for >x seconds (1 / our permille * x * ms) AND have votepower.
-	if !started {
-		started = true
+	if !started["handleEvents"] {
+		started["handleEvents"] = true
 		actors.GetWaitGroup().Add(1)
-		var eose = make(chan bool)
+		var eoseChan = make(chan bool)
 		var eventChan = make(chan nostr.Event)
-		var liveModeStateChangeChan = make(chan nostr.Event)
-		var liveModeConsensusChan = make(chan nostr.Event)
-		go handleEventsInLiveMode(liveModeStateChangeChan, liveModeConsensusChan)
-		go sendToCache(eventChan, liveModeStateChangeChan, liveModeConsensusChan)
-		go eventcatcher.SubscribeToTree(eventChan, sendChan, eose)
-		var toReplay []nostr.Event
+		stack := library.NewEventStack(1)
+		var eose bool
+		go eventcatcher.SubscribeToTree(eventChan, publishChan, eoseChan)
 	L:
 		for {
 			select {
-			case <-eose:
-				//just keeping this here for now because probably need to do something
-			case <-actors.GetTerminateChan():
-				for i, event := range toReplay {
-					fmt.Printf("\nReplay Queue %d%s\n", i, event.ID)
+			case <-eoseChan:
+				eose = true
+			case event := <-eventChan:
+				addEventToCache(event)
+				if event.Kind == 640064 {
+					err := handleConsensusEvent(event)
+					if err != nil {
+						library.LogCLI(err.Error(), 1)
+					}
+				} else {
+					stack.Push(&event)
 				}
+			case <-time.After(time.Millisecond * 100):
+				//todo change second to 150ms * <inverse of our account's votepower position>
+				//todo create exception for ignition event if we are ignition account
+				if eose && shares.VotepowerForAccount(actors.MyWallet().Account) > 0 {
+					event, ok := stack.Pop()
+					if ok {
+						//fmt.Println(event.Content)
+						err := handleEvent(*event, false)
+						if err != nil {
+							library.LogCLI(err.Error(), 2)
+						}
+						if err == nil {
+							err = consensustree.CreateNewConsensusEvent(*event, publishChan)
+							if err != nil {
+								library.LogCLI(err.Error(), 1)
+							}
+						}
+					}
+				}
+			case <-actors.GetTerminateChan():
+				//just keeping this here for shutdown hooks
 				actors.GetWaitGroup().Done()
 				break L
 			}
@@ -104,7 +111,6 @@ func stopTryingThisEvent(e library.Sha256) bool {
 }
 
 func handleEventsInLiveMode(stateChange, consensus chan nostr.Event) {
-	//todo handle consensus events in live mode
 	for {
 		select {
 		case <-actors.GetTerminateChan():
@@ -223,22 +229,21 @@ func getAllStateChangeEventsFromCache() (el []nostr.Event) {
 	return
 }
 
-//
-//func processEvent(e nostr.Event) error {
-//	eventsInStateLock.Lock()
-//	defer eventsInStateLock.Unlock()
-//	if eventIsInState(e.ID) {
-//		return nil
-//	}
-//	if eventsInState.isDirectReply(e) {
-//		err := handleEvent(e, false)
-//		if err != nil {
-//			return err
-//		}
-//		return nil
-//	}
-//	return fmt.Errorf("event is not in direct reply to any other event in nostrocket state")
-//}
+func processEvent(e nostr.Event) error {
+	eventsInStateLock.Lock()
+	defer eventsInStateLock.Unlock()
+	if eventIsInState(e.ID) {
+		return nil
+	}
+	if eventsInState.isDirectReply(e) {
+		err := handleEvent(e, false)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	return fmt.Errorf("event is not in direct reply to any other event in nostrocket state")
+}
 
 func handleEvent(e nostr.Event, fromConsensusEvent bool) error {
 	if eventIsInState(e.ID) {
@@ -258,7 +263,7 @@ func handleEvent(e nostr.Event, fromConsensusEvent bool) error {
 			closer <- true
 			mappedReplay := <-returner
 			close(returner)
-			library.LogCLI(fmt.Sprintf("Handled state change event %s consensus mode: %v", e.ID, fromConsensusEvent), 4)
+			library.LogCLI(fmt.Sprintf("Handled state change event %s consensus mode: %v", e.ID, fromConsensusEvent), 3)
 			//removed because getting everything nice and clean wrt just following conesnsus events, will deal with non-consensus state change events later
 			//if !fromConsensusEvent {
 			//	publishConsensusTree(e)
@@ -271,6 +276,7 @@ func handleEvent(e nostr.Event, fromConsensusEvent bool) error {
 			}
 			if err == nil {
 				//publish our current state
+				//todo only publish if we are at the current bitcoin tip
 				Publish(actors.CurrentStateEventBuilder(fmt.Sprintf("%s", b)))
 				return nil
 			}
@@ -305,6 +311,7 @@ func eventIsInState(e library.Sha256) bool {
 //}
 
 func routeEvent(e nostr.Event) (mindName string, newState any, err error) {
+	//todo get current state from each Mind, and verify that state was actually changed, return error if not
 	switch k := e.Kind; {
 	default:
 		mindName = ""
