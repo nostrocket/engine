@@ -31,6 +31,16 @@ func cliListener(interrupt chan struct{}) {
 				break
 			}
 			fmt.Println("Key " + str + " is not bound to any test procedures. See main.cliListener for more details.")
+		case "s":
+			m := shares.GetMapped()
+			for id, m2 := range m {
+				fmt.Printf("\n--------- Subrocket Name: %s -----------\n", id)
+				for account, share := range m2 {
+					fmt.Printf("\nAccount: %s\nLeadTimeLockedShares: %d\nLeadTime: %d\nLastLeadTimeChange: %d\nLeadTimeUnlockedShares: %d\nOpReturnAddresses: %s\n\n",
+						account, share.LeadTimeLockedShares, share.LeadTime, share.LeadTimeUnlockedShares, share.LastLtChange, share.OpReturnAddresses)
+				}
+				fmt.Printf("\n--------- End of data for: %s -----------\n\n", id)
+			}
 		case "q":
 			close(interrupt)
 		case "w":

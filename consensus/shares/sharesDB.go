@@ -208,3 +208,10 @@ func GetPosition(account library.Account) int64 {
 	}
 	return 0
 }
+
+func GetMapped() Mapped {
+	startDb()
+	currentState["nostrocket"].mutex.Lock()
+	defer currentState["nostrocket"].mutex.Unlock()
+	return getMapped()
+}
