@@ -80,6 +80,9 @@ func handleEvents() {
 				lastReplayHash = replay.GetStateHash()
 				//todo create exception for ignition event if we are ignition account
 				if eose && shares.VotepowerForAccount(actors.MyWallet().Account) > 0 && votepowerPosition > 0 {
+					for _, event := range consensustree.DeleteDuplicateConsensusEvents() {
+						fmt.Printf("\nTODO: publish here after we know we aren't deleting valid events\n%#v\n", event)
+					}
 					event, ok := stack.Pop()
 					if ok {
 						processStateChangeEventOutOfConsensus(event)

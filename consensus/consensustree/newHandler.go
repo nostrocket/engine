@@ -3,6 +3,7 @@ package consensustree
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/nbd-wtf/go-nostr"
@@ -109,17 +110,9 @@ func handleNewConsensusEvent(unmarshalled Kind640064, e nostr.Event, scEvent cha
 	if currentInner.Permille < 1 {
 		return fmt.Errorf("permille is less than 1")
 	}
-
-	//
-	//continue to copy from old handler. If this is the next height, and inner event has not been handled yet, and >500 permille, then process inner (check the EOSE handler to see what we need to do, take some action if inner event fails)
-	//then re-process all events in the events map
-	//any time we successfully handle an event, check the map and delete it from there so we don't fuck memory
-
-	//if we have votepower AND have not signed AND this is the next height (AND inner event is valid) THEN sign and broadcast consesnus event
-
 	//what if event is below 500 permille? we still need to sign because otherwise it will never get above 500 permille
-	//solution: rebuild state if we see a different inner event getting >500 permille at this height
-	//we should always work from checkpointed state if it exists, store local checkpoints every time we pass 500 permille.
+	//solution: rebuild state if we see a different inner event getting >500 permille at this height - add it to checkpoint and rebuild
+	//todo we should always work from checkpointed state if it exists, store local checkpoints every time we pass 500 permille.
 	if currentInner.StateChangeEventHeight == latestHandledHeight+1 {
 		if localEvent {
 			currentInner.StateChangeEventHandled = true
@@ -134,7 +127,6 @@ func handleNewConsensusEvent(unmarshalled Kind640064, e nostr.Event, scEvent cha
 		}
 		if shares.VotepowerForAccount(actors.MyWallet().Account) > 0 && !currentInner.IHaveSigned {
 			//todo problem: we will sign more than once like this.
-			//Solution: go through all previous heights and delete any that we have signed more than once OR don't sign anything until we reach the current bitcoin height or haven't seen any new consensus events for x seconds
 			//solution: if this event is already signed by us, and we are now seeing another consensus event (we have signed more than once) delete the newest one - send a kind5 event to delete.
 			ce, err := produceConsensusEvent(Kind640064{
 				StateChangeEventID: currentInner.StateChangeEventID,
@@ -149,11 +141,51 @@ func handleNewConsensusEvent(unmarshalled Kind640064, e nostr.Event, scEvent cha
 				currentInner.IHaveSigned = true
 			}
 		}
-
 	}
 	current[unmarshalled.StateChangeEventID] = currentInner
 	currentState.data[currentInner.StateChangeEventHeight] = current
 	return nil
+}
+
+func DeleteDuplicateConsensusEvents() []nostr.Event {
+	currentState.mutex.Lock()
+	defer currentState.mutex.Unlock()
+	return deleteDuplicateConsensusEvents()
+}
+
+func deleteDuplicateConsensusEvents() (r []nostr.Event) {
+	for _, m := range currentState.data {
+		for _, event := range m {
+			var ourConsensusEvents []nostr.Event
+			for _, n := range event.ConsensusEvents {
+				if n.PubKey == actors.MyWallet().Account {
+					ourConsensusEvents = append(ourConsensusEvents, n)
+				}
+			}
+			sort.Slice(ourConsensusEvents, func(i, j int) bool {
+				return ourConsensusEvents[i].CreatedAt.Unix() < ourConsensusEvents[j].CreatedAt.Unix()
+			})
+			for k := len(ourConsensusEvents); k > 1; k-- {
+				r = append(r, deleteEvent(ourConsensusEvents[k-1].ID))
+			}
+		}
+	}
+	return
+}
+
+func deleteEvent(id library.Sha256) (r nostr.Event) {
+	r = nostr.Event{
+		PubKey:    actors.MyWallet().Account,
+		CreatedAt: time.Now(),
+		Kind:      5,
+		Tags: nostr.Tags{nostr.Tag{
+			"e", id},
+		},
+		Content: "woops",
+	}
+	r.ID = r.GetID()
+	r.Sign(actors.MyWallet().PrivateKey)
+	return
 }
 
 func CreateNewConsensusEvent(e nostr.Event, publish chan nostr.Event) error {
