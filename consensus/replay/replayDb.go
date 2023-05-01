@@ -45,20 +45,20 @@ func start(ready chan struct{}) {
 	// We add a delta to the provided waitgroup so that upstream knows when the database has been safely shut down
 	actors.GetWaitGroup().Add(1)
 	// Load current shares from disk
-	c, ok := actors.Open("replay", "current")
-	if ok {
-		currentState.restoreFromDisk(c)
-	}
+	//c, ok := actors.Open("replay", "current")
+	//if ok {
+	//	currentState.restoreFromDisk(c)
+	//}
 	close(ready)
 	<-actors.GetTerminateChan()
 	currentState.mutex.Lock()
 	defer currentState.mutex.Unlock()
-	b, err := json.MarshalIndent(currentState.data, "", " ")
-	if err != nil {
-		library.LogCLI(err.Error(), 0)
-	}
-	actors.Write("replay", "current", b)
-	currentState.persistToDisk()
+	//b, err := json.MarshalIndent(currentState.data, "", " ")
+	//if err != nil {
+	//	library.LogCLI(err.Error(), 0)
+	//}
+	//actors.Write("replay", "current", b)
+	//currentState.persistToDisk()
 	actors.GetWaitGroup().Done()
 	library.LogCLI("Replay Mind has shut down", 4)
 }
@@ -78,14 +78,15 @@ func (s *db) restoreFromDisk(f *os.File) {
 	}
 }
 
-// persistToDisk persists the current state to disk
-func (s *db) persistToDisk() {
-	b, err := json.MarshalIndent(s.data, "", " ")
-	if err != nil {
-		library.LogCLI(err.Error(), 0)
-	}
-	actors.Write("replay", "current", b)
-}
+//
+//// persistToDisk persists the current state to disk
+//func (s *db) persistToDisk() {
+//	b, err := json.MarshalIndent(s.data, "", " ")
+//	if err != nil {
+//		library.LogCLI(err.Error(), 0)
+//	}
+//	actors.Write("replay", "current", b)
+//}
 
 func GetMap() Mapped {
 	currentState.mutex.Lock()

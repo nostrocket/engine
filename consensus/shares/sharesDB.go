@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
-	"os"
 	"sort"
 
 	"github.com/nbd-wtf/go-nostr"
@@ -54,14 +53,14 @@ func start(ready chan struct{}) {
 	// We add a delta to the provided waitgroup so that upstream knows when the database has been safely shut down
 	actors.GetWaitGroup().Add(1)
 	// Load current shares from disk
-	for s, _ := range subrockets.Names() {
-		c, ok := actors.Open("shares", s)
-		if ok {
-			d := currentState[s]
-			d.restoreFromDisk(c)
-			currentState[s] = d
-		}
-	}
+	//for s, _ := range subrockets.Names() {
+	//	c, ok := actors.Open("shares", s)
+	//	if ok {
+	//		d := currentState[s]
+	//		d.restoreFromDisk(c)
+	//		currentState[s] = d
+	//	}
+	//}
 	if _, ok := currentState["nostroket"]; !ok {
 		k640208 := Kind640208{RocketID: "nostrocket"}
 		j, err := json.Marshal(k640208)
@@ -77,38 +76,38 @@ func start(ready chan struct{}) {
 	}
 	close(ready)
 	<-actors.GetTerminateChan()
-	for _, d := range currentState {
-		d.mutex.Lock()
-		defer d.mutex.Unlock()
-		d.persistToDisk()
-	}
+	//for _, d := range currentState {
+	//	d.mutex.Lock()
+	//	defer d.mutex.Unlock()
+	//	d.persistToDisk()
+	//}
 	actors.GetWaitGroup().Done()
 	library.LogCLI("Shares Mind has shut down", 4)
 }
 
-func (s *db) restoreFromDisk(f *os.File) {
-	s.mutex.Lock()
-	err := json.NewDecoder(f).Decode(&s.data)
-	if err != nil {
-		if err.Error() != "EOF" {
-			library.LogCLI(err.Error(), 0)
-		}
-	}
-	s.mutex.Unlock()
-	err = f.Close()
-	if err != nil {
-		library.LogCLI(err.Error(), 0)
-	}
-}
+//func (s *db) restoreFromDisk(f *os.File) {
+//	s.mutex.Lock()
+//	err := json.NewDecoder(f).Decode(&s.data)
+//	if err != nil {
+//		if err.Error() != "EOF" {
+//			library.LogCLI(err.Error(), 0)
+//		}
+//	}
+//	s.mutex.Unlock()
+//	err = f.Close()
+//	if err != nil {
+//		library.LogCLI(err.Error(), 0)
+//	}
+//}
 
-// persistToDisk persists the current state to disk
-func (s *db) persistToDisk() {
-	b, err := json.MarshalIndent(s.data, "", " ")
-	if err != nil {
-		library.LogCLI(err.Error(), 0)
-	}
-	actors.Write("shares", s.rocketID, b)
-}
+//// persistToDisk persists the current state to disk
+//func (s *db) persistToDisk() {
+//	b, err := json.MarshalIndent(s.data, "", " ")
+//	if err != nil {
+//		library.LogCLI(err.Error(), 0)
+//	}
+//	actors.Write("shares", s.rocketID, b)
+//}
 
 func makeNewCapTable(name library.RocketID) error {
 	if table, exists := currentState[name]; exists {

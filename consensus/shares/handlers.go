@@ -56,7 +56,7 @@ func handle640208(event nostr.Event) (m Mapped, err error) {
 		LastLtChange:           0, //todo current bitcoin height
 		LeadTimeUnlockedShares: 0,
 	}
-	d.persistToDisk()
 	currentState[unmarshalled.RocketID] = d
+	//d.persistToDisk()
 	return getMapped(), nil
 }

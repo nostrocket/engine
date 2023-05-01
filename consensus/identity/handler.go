@@ -97,7 +97,7 @@ func HandleEvent(event nostr.Event) (m Mapped, e error) {
 			for _, ident := range updateIdents {
 				currentState.data[ident.Account] = ident
 			}
-			currentState.persistToDisk()
+			//currentState.persistToDisk()
 			return getMap(), nil
 		}
 	}

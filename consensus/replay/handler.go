@@ -22,7 +22,7 @@ func HandleEvent(event nostr.Event) (chan bool, chan Mapped, bool) {
 						currentState.mutex.Lock()
 						defer currentState.mutex.Unlock()
 						currentState.upsert(event.PubKey, event.ID)
-						currentState.persistToDisk()
+						//currentState.persistToDisk()
 						returner <- getMap()
 					}
 					break

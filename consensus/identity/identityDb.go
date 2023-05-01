@@ -1,9 +1,6 @@
 package identity
 
 import (
-	"encoding/json"
-	"os"
-
 	"github.com/sasha-s/go-deadlock"
 	"nostrocket/engine/actors"
 	"nostrocket/engine/library"
@@ -41,34 +38,33 @@ func startDb() {
 func start(ready chan struct{}) {
 	// We add a delta to the provided waitgroup so that upstream knows when the database has been safely shut down
 	actors.GetWaitGroup().Add(1)
-	// Load current shares from disk
-	c, ok := actors.Open("identity", "current")
-	if ok {
-		currentState.restoreFromDisk(c)
-	}
+	// Load current state from disk
+	//c, ok := actors.Open("identity", "current")
+	//if ok {
+	//	currentState.restoreFromDisk(c)
+	//}
 	insertIgnitionState()
 	close(ready)
 	<-actors.GetTerminateChan()
 	currentState.mutex.Lock()
 	defer currentState.mutex.Unlock()
-	b, err := json.MarshalIndent(currentState.data, "", " ")
-	if err != nil {
-		library.LogCLI(err.Error(), 0)
-	}
-	actors.Write("identity", "current", b)
-	currentState.persistToDisk()
+	//b, err := json.MarshalIndent(currentState.data, "", " ")
+	//if err != nil {
+	//	library.LogCLI(err.Error(), 0)
+	//}
+	//actors.Write("identity", "current", b)
+	//currentState.persistToDisk()
 	actors.GetWaitGroup().Done()
 	library.LogCLI("Identity Mind has shut down", 4)
 }
 
 func insertIgnitionState() {
-	//todo preflight
 	ignitionAccount := getLatestIdentity(actors.IgnitionAccount)
 	if len(ignitionAccount.UniqueSovereignBy) == 0 {
 		ignitionAccount.UniqueSovereignBy = "1Humanityrvhus5mFWRRzuJjtAbjk2qwww"
 		ignitionAccount.MaintainerBy = "1Humanityrvhus5mFWRRzuJjtAbjk2qwww"
 		currentState.upsert(actors.IgnitionAccount, ignitionAccount)
-		currentState.persistToDisk()
+		//currentState.persistToDisk()
 	}
 }
 func getLatestIdentity(account library.Account) Identity {
@@ -79,29 +75,29 @@ func getLatestIdentity(account library.Account) Identity {
 	return id
 }
 
-func (s *db) restoreFromDisk(f *os.File) {
-	s.mutex.Lock()
-	err := json.NewDecoder(f).Decode(&s.data)
-	if err != nil {
-		if err.Error() != "EOF" {
-			library.LogCLI(err.Error(), 0)
-		}
-	}
-	s.mutex.Unlock()
-	err = f.Close()
-	if err != nil {
-		library.LogCLI(err.Error(), 0)
-	}
-}
+//func (s *db) restoreFromDisk(f *os.File) {
+//	s.mutex.Lock()
+//	err := json.NewDecoder(f).Decode(&s.data)
+//	if err != nil {
+//		if err.Error() != "EOF" {
+//			library.LogCLI(err.Error(), 0)
+//		}
+//	}
+//	s.mutex.Unlock()
+//	err = f.Close()
+//	if err != nil {
+//		library.LogCLI(err.Error(), 0)
+//	}
+//}
 
-// persistToDisk persists the current state to disk
-func (s *db) persistToDisk() {
-	b, err := json.MarshalIndent(s.data, "", " ")
-	if err != nil {
-		library.LogCLI(err.Error(), 0)
-	}
-	actors.Write("identity", "current", b)
-}
+//// persistToDisk persists the current state to disk
+//func (s *db) persistToDisk() {
+//	b, err := json.MarshalIndent(s.data, "", " ")
+//	if err != nil {
+//		library.LogCLI(err.Error(), 0)
+//	}
+//	actors.Write("identity", "current", b)
+//}
 
 func GetMap() Mapped {
 	startDb()

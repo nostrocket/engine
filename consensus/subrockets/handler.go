@@ -38,7 +38,7 @@ func handle640600(event nostr.Event) (m Mapped, err error) {
 		CreatedBy: event.PubKey,
 		ProblemID: unmarshalled.Problem,
 	})
-	currentState.persistToDisk()
+	//currentState.persistToDisk()
 	return getMap(), nil
 }
 

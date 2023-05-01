@@ -1,9 +1,6 @@
 package subrockets
 
 import (
-	"encoding/json"
-	"os"
-
 	"github.com/sasha-s/go-deadlock"
 	"nostrocket/engine/actors"
 	"nostrocket/engine/library"
@@ -42,10 +39,10 @@ func start(ready chan struct{}) {
 	// We add a delta to the provided waitgroup so that upstream knows when the database has been safely shut down
 	actors.GetWaitGroup().Add(1)
 	// Load current shares from disk
-	c, ok := actors.Open("subrockets", "current")
-	if ok {
-		currentState.restoreFromDisk(c)
-	}
+	//c, ok := actors.Open("subrockets", "current")
+	//if ok {
+	//	currentState.restoreFromDisk(c)
+	//}
 	if _, exists := currentState.data["nostrocket"]; !exists {
 		currentState.data["nostrocket"] = Rocket{
 			RocketID:  "nostrocket",
@@ -53,44 +50,44 @@ func start(ready chan struct{}) {
 			ProblemID: actors.IgnitionEvent,
 		}
 	}
-	currentState.persistToDisk()
+	//currentState.persistToDisk()
 	close(ready)
 	<-actors.GetTerminateChan()
 	currentState.mutex.Lock()
 	defer currentState.mutex.Unlock()
-	b, err := json.MarshalIndent(currentState.data, "", " ")
-	if err != nil {
-		library.LogCLI(err.Error(), 0)
-	}
-	actors.Write("subrockets", "current", b)
-	currentState.persistToDisk()
+	//b, err := json.MarshalIndent(currentState.data, "", " ")
+	//if err != nil {
+	//	library.LogCLI(err.Error(), 0)
+	//}
+	//actors.Write("subrockets", "current", b)
+	//currentState.persistToDisk()
 	actors.GetWaitGroup().Done()
 	library.LogCLI("Subrockets Mind has shut down", 4)
 }
 
-func (s *db) restoreFromDisk(f *os.File) {
-	s.mutex.Lock()
-	err := json.NewDecoder(f).Decode(&s.data)
-	if err != nil {
-		if err.Error() != "EOF" {
-			library.LogCLI(err.Error(), 0)
-		}
-	}
-	s.mutex.Unlock()
-	err = f.Close()
-	if err != nil {
-		library.LogCLI(err.Error(), 0)
-	}
-}
-
-// persistToDisk persists the current state to disk
-func (s *db) persistToDisk() {
-	b, err := json.MarshalIndent(s.data, "", " ")
-	if err != nil {
-		library.LogCLI(err.Error(), 0)
-	}
-	actors.Write("subrockets", "current", b)
-}
+//func (s *db) restoreFromDisk(f *os.File) {
+//	s.mutex.Lock()
+//	err := json.NewDecoder(f).Decode(&s.data)
+//	if err != nil {
+//		if err.Error() != "EOF" {
+//			library.LogCLI(err.Error(), 0)
+//		}
+//	}
+//	s.mutex.Unlock()
+//	err = f.Close()
+//	if err != nil {
+//		library.LogCLI(err.Error(), 0)
+//	}
+//}
+//
+//// persistToDisk persists the current state to disk
+//func (s *db) persistToDisk() {
+//	b, err := json.MarshalIndent(s.data, "", " ")
+//	if err != nil {
+//		library.LogCLI(err.Error(), 0)
+//	}
+//	actors.Write("subrockets", "current", b)
+//}
 
 func GetMap() Mapped {
 	startDb()
