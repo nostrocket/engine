@@ -77,7 +77,7 @@ func handleEvents() {
 					stack.Push(&event)
 				}
 			case <-time.After(timeToWaitBeforeHandlingNewStateChangeEvents):
-				//todo change second to 150ms * <inverse of our account's votepower position>
+				lastReplayHash = replay.GetStateHash()
 				//todo create exception for ignition event if we are ignition account
 				if eose && shares.VotepowerForAccount(actors.MyWallet().Account) > 0 && votepowerPosition > 0 {
 					event, ok := stack.Pop()
@@ -86,7 +86,7 @@ func handleEvents() {
 					}
 					if !ok {
 						if replay.GetStateHash() != lastReplayHash {
-							library.LogCLI("Replaying previously failed state change events", 4)
+							library.LogCLI("Some state has changed, so we are attempting to replay previously failed state change events", 4)
 							lastReplayHash = replay.GetStateHash()
 							for _, n := range getAllUnhandledStateChangeEventsFromCache() {
 								processStateChangeEventOutOfConsensus(&n)
@@ -106,7 +106,7 @@ func handleEvents() {
 func processStateChangeEventOutOfConsensus(event *nostr.Event) {
 	err := handleEvent(*event, false)
 	if err != nil {
-		library.LogCLI(err.Error(), 2)
+		//library.LogCLI(err.Error(), 2)
 	}
 	if err == nil {
 		err = consensustree.CreateNewConsensusEvent(*event, publishChan)
@@ -114,18 +114,6 @@ func processStateChangeEventOutOfConsensus(event *nostr.Event) {
 			library.LogCLI(err.Error(), 1)
 		}
 	}
-}
-
-var errors = make(map[library.Sha256]int64)
-
-func stopTryingThisEvent(e library.Sha256) bool {
-	num, exists := errors[e]
-	if exists {
-		if num > 10 {
-			return true
-		}
-	}
-	return false
 }
 
 func handleConsensusEvent(e nostr.Event) error {
@@ -137,7 +125,7 @@ func handleConsensusEvent(e nostr.Event) error {
 			select {
 			case e := <-consensusEventsToPublish:
 				fmt.Printf("\nCONSENSUS EVENT TO PUBLISH:\n%#v\n", e)
-				//Publish(e)
+				Publish(e)
 			case e := <-toHandle:
 				event, ok := getEventFromCache(e)
 				if !ok {
@@ -152,7 +140,7 @@ func handleConsensusEvent(e nostr.Event) error {
 						returnResult <- true
 					}
 				}
-			case <-actors.GetTerminateChan():
+			case <-time.After(time.Second * 6):
 				return
 			}
 		}
@@ -213,27 +201,27 @@ func getAllUnhandledStateChangeEventsFromCache() (el []nostr.Event) {
 	return
 }
 
-func processEvent(e nostr.Event) error {
-	eventsInStateLock.Lock()
-	defer eventsInStateLock.Unlock()
-	if eventIsInState(e.ID) {
-		return nil
-	}
-	if eventsInState.isDirectReply(e) {
-		err := handleEvent(e, false)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-	return fmt.Errorf("event is not in direct reply to any other event in nostrocket state")
-}
+//func processEvent(e nostr.Event) error {
+//	eventsInStateLock.Lock()
+//	defer eventsInStateLock.Unlock()
+//	if eventIsInState(e.ID) {
+//		return nil
+//	}
+//	if eventsInState.isDirectReply(e) {
+//		err := handleEvent(e, false)
+//		if err != nil {
+//			return err
+//		}
+//		return nil
+//	}
+//	return fmt.Errorf("event is not in direct reply to any other event in nostrocket state")
+//}
 
 func handleEvent(e nostr.Event, fromConsensusEvent bool) error {
 	if eventIsInState(e.ID) {
 		return fmt.Errorf("event %s is already in our local state", e.ID)
 	}
-	library.LogCLI(fmt.Sprintf("Attempting to handle state change event %s consensus mode: %v", e.ID, fromConsensusEvent), 4)
+	library.LogCLI(fmt.Sprintf("Attempting to handle state change event %s [consensus mode: %v]", e.ID, fromConsensusEvent), 4)
 	closer, returner, ok := replay.HandleEvent(e)
 	if ok {
 		eventsInState[e.ID] = e
@@ -247,7 +235,7 @@ func handleEvent(e nostr.Event, fromConsensusEvent bool) error {
 			closer <- true
 			mappedReplay := <-returner
 			close(returner)
-			library.LogCLI(fmt.Sprintf("Handled state change event %s consensus mode: %v", e.ID, fromConsensusEvent), 3)
+			library.LogCLI(fmt.Sprintf("State has been updated by %s [consensus mode: %v]", e.ID, fromConsensusEvent), 3)
 			actors.AppendState("replay", mappedReplay)
 			n, _ := actors.AppendState(mindName, mappedState)
 			b, err := json.Marshal(n)
