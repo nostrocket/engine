@@ -9,13 +9,13 @@ import (
 	"nostrocket/engine/library"
 )
 
-type db struct {
-	data  map[int64]map[library.Sha256]TreeEvent
-	mutex *deadlock.Mutex
-}
-
 var currentState = db{
 	data:  make(map[int64]map[library.Sha256]TreeEvent),
+	mutex: &deadlock.Mutex{},
+}
+
+var checkpoints = checkpoint{
+	data:  make(map[int64]Checkpoint),
 	mutex: &deadlock.Mutex{},
 }
 
@@ -44,23 +44,23 @@ func start(ready chan struct{}) {
 	// Load current shares from disk
 	c, ok := actors.Open("consensustree", "current")
 	if ok {
-		currentState.restoreFromDisk(c)
+		checkpoints.restoreFromDisk(c)
 	}
 	close(ready)
 	<-actors.GetTerminateChan()
-	currentState.mutex.Lock()
-	defer currentState.mutex.Unlock()
-	b, err := json.MarshalIndent(currentState.data, "", " ")
+	checkpoints.mutex.Lock()
+	defer checkpoints.mutex.Unlock()
+	b, err := json.MarshalIndent(checkpoints.data, "", " ")
 	if err != nil {
 		library.LogCLI(err.Error(), 0)
 	}
 	actors.Write("consensustree", "current", b)
-	//currentState.persistToDisk()
+	checkpoints.persistToDisk()
 	actors.GetWaitGroup().Done()
 	library.LogCLI("Consensus Tree Mind has shut down", 4)
 }
 
-func (s *db) restoreFromDisk(f *os.File) {
+func (s *checkpoint) restoreFromDisk(f *os.File) {
 	s.mutex.Lock()
 	err := json.NewDecoder(f).Decode(&s.data)
 	if err != nil {
@@ -75,14 +75,14 @@ func (s *db) restoreFromDisk(f *os.File) {
 	}
 }
 
-// persistToDisk persists the current state to disk
-//func (s *db) persistToDisk() {
-//	b, err := json.MarshalIndent(s.data, "", " ")
-//	if err != nil {
-//		library.LogCLI(err.Error(), 0)
-//	}
-//	actors.Write("consensustree", "current", b)
-//}
+//persistToDisk persists the current state to disk
+func (s *checkpoint) persistToDisk() {
+	b, err := json.MarshalIndent(s.data, "", " ")
+	if err != nil {
+		library.LogCLI(err.Error(), 0)
+	}
+	actors.Write("consensustree", "current", b)
+}
 
 //func getMyLastest() (library.Sha256, int64) {
 //	var heighest int64
@@ -161,6 +161,35 @@ func getAllStateChangeEventsInOrder() (r []library.Sha256) {
 			}
 		}
 		r = append(r, candidate)
+	}
+	return
+}
+
+func getCheckpoint(height int64) (Checkpoint, bool) {
+	checkpoints.mutex.Lock()
+	defer checkpoints.mutex.Unlock()
+	if c, exists := checkpoints.data[height]; exists {
+		return c, true
+	}
+	return Checkpoint{}, false
+}
+
+func setCheckpoint(c Checkpoint) bool {
+	checkpoints.mutex.Lock()
+	defer checkpoints.mutex.Unlock()
+	if _, exists := checkpoints.data[c.StateChangeEventHeight]; !exists {
+		checkpoints.data[c.StateChangeEventHeight] = c
+		checkpoints.persistToDisk()
+		return true
+	}
+	return false
+}
+
+func GetCheckpoints() (r []Checkpoint) {
+	checkpoints.mutex.Lock()
+	defer checkpoints.mutex.Unlock()
+	for i := 0; i < len(checkpoints.data); i++ {
+		r = append(r, checkpoints.data[int64(i+1)])
 	}
 	return
 }

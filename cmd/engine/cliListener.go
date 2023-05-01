@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/eiannone/keyboard"
 	"nostrocket/consensus/consensustree"
@@ -63,14 +64,19 @@ func cliListener(interrupt chan struct{}) {
 				e := eventconductor.GetEventFromCache(sha256)
 				fmt.Printf("\nID: %s Kind: %d Signed By: %s\nTags: %#v\nContent: %s\n", e.ID, e.Kind, e.PubKey, e.Tags, e.Content)
 			}
-			fmt.Println("LATEST STATE CHANGE EVENT AND HEIGHT IN THE CONSENSUS TREE")
-			fmt.Println(consensustree.GetLatestHandled())
 
-			//for _, m := range consensustree.GetMap() {
-			//	for _, event := range m {
-			//		fmt.Printf("\n%#v\n", event)
-			//	}
-			//}
+			fmt.Println("CHECKPOINTS")
+			for _, checkpoint := range consensustree.GetCheckpoints() {
+				fmt.Printf("\nHeight: %d EventID: %s\nWitnessed At: %s\n", checkpoint.StateChangeEventHeight, checkpoint.StateChangeEventID, time.Unix(checkpoint.CreatedAt, 0).String())
+			}
+			//fmt.Println("LATEST STATE CHANGE EVENT AND HEIGHT IN THE CONSENSUS TREE")
+			//fmt.Println(consensustree.GetLatestHandled())
+
+			for _, m := range consensustree.GetMap() {
+				for _, event := range m {
+					fmt.Printf("\n%#v\n", event)
+				}
+			}
 		}
 	}
 }

@@ -1,5 +1,6 @@
 package consensustree
 
+//todo are we handling out-of order consensus events? make sure
 import (
 	"encoding/json"
 	"fmt"
@@ -38,6 +39,14 @@ func handleNewConsensusEvent(unmarshalled Kind640064, e nostr.Event, scEvent cha
 		return nil
 	}
 	startDb()
+	if c, ok := getCheckpoint(unmarshalled.Height); ok {
+		if c.StateChangeEventID != unmarshalled.StateChangeEventID {
+			if e.PubKey == actors.MyWallet().Account {
+				cPublish <- deleteEvent(e.ID)
+			}
+			return fmt.Errorf("we have a checkpoint at this height and it doesn't match the event provided")
+		}
+	}
 	if !checkTags(e) {
 		events[e.ID] = e
 		return nil
@@ -73,13 +82,16 @@ func handleNewConsensusEvent(unmarshalled Kind640064, e nostr.Event, scEvent cha
 	if unmarshalled.Height < 1 {
 		return nil
 	}
+	var aStateChangeEventHasAlreadyBeenHandledAtThisHeight bool
 	for _, event := range current {
 		if event.Permille == 1000 {
 			return nil //fmt.Errorf("we already have 1000 permille for this height")
 		}
 		if event.StateChangeEventHandled {
 			if unmarshalled.StateChangeEventID != event.StateChangeEventID {
-				return fmt.Errorf("we have already handled a different event at this height, cannot process two different events at the same height without wreaking havoc - todo: 4536g45")
+				aStateChangeEventHasAlreadyBeenHandledAtThisHeight = true
+				//todo we should still put this into state in case it reaches a higher permille than the current one, just dont process the state change event. Put it into checkpoint and rebuild if it reaches >500 permille.
+				//return fmt.Errorf("we have already handled a different event at this height, cannot process two different events at the same height without wreaking havoc - todo: 4536g45")
 				//todo rebuild state if we see a different inner event getting >500 permille at this height. Delete our consensus event if we have produced one for this height and sign the >500 permille one instead.
 				//store a checkpoint for the >500 permille state at this height (store to disk) reset and rebuild state, and only validate consensus events with this state change event ID at this height.
 			}
@@ -117,7 +129,7 @@ func handleNewConsensusEvent(unmarshalled Kind640064, e nostr.Event, scEvent cha
 		if localEvent {
 			currentInner.StateChangeEventHandled = true
 		}
-		if !currentInner.StateChangeEventHandled {
+		if !currentInner.StateChangeEventHandled && !aStateChangeEventHasAlreadyBeenHandledAtThisHeight {
 			scEvent <- currentInner.StateChangeEventID
 			result := <-scResult
 			if !result {
@@ -126,8 +138,6 @@ func handleNewConsensusEvent(unmarshalled Kind640064, e nostr.Event, scEvent cha
 			currentInner.StateChangeEventHandled = true
 		}
 		if shares.VotepowerForAccount(actors.MyWallet().Account) > 0 && !currentInner.IHaveSigned {
-			//todo problem: we will sign more than once like this.
-			//solution: if this event is already signed by us, and we are now seeing another consensus event (we have signed more than once) delete the newest one - send a kind5 event to delete.
 			ce, err := produceConsensusEvent(Kind640064{
 				StateChangeEventID: currentInner.StateChangeEventID,
 				Height:             currentInner.StateChangeEventHeight,
@@ -144,6 +154,16 @@ func handleNewConsensusEvent(unmarshalled Kind640064, e nostr.Event, scEvent cha
 	}
 	current[unmarshalled.StateChangeEventID] = currentInner
 	currentState.data[currentInner.StateChangeEventHeight] = current
+	if currentInner.Permille > 500 {
+		setCheckpoint(Checkpoint{
+			StateChangeEventHeight: currentInner.StateChangeEventHeight,
+			StateChangeEventID:     currentInner.StateChangeEventID,
+			BitcoinHeight:          0, //todo bitcoin height
+			CreatedAt:              time.Now().Unix(),
+		})
+	}
+	//todo check if we have any conflicting consensus states where we have handled the state change event but something else at the same height has a greater permille, then reset and follow that one instead. Store it only as a temporary checkpoint if <500 permille.
+
 	return nil
 }
 
