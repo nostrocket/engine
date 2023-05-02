@@ -3,6 +3,7 @@ package shares
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"math/big"
 	"sort"
 
@@ -24,6 +25,8 @@ var currentStateMu = &deadlock.Mutex{}
 
 var started = false
 var available = &deadlock.Mutex{}
+
+var debug = true
 
 // StartDb starts the database for this mind (the Mind-state). It blocks until the database is ready to use.
 func startDb() {
@@ -61,17 +64,27 @@ func start(ready chan struct{}) {
 	//		currentState[s] = d
 	//	}
 	//}
-	if _, ok := currentState["nostroket"]; !ok {
-		k640208 := Kind640208{RocketID: "nostrocket"}
-		j, err := json.Marshal(k640208)
-		if err != nil {
-			library.LogCLI(err.Error(), 0)
-		}
-		if _, err := handle640208(nostr.Event{
-			PubKey:  actors.IgnitionAccount,
-			Content: fmt.Sprintf("%s", j),
-		}); err != nil {
-			library.LogCLI(err.Error(), 0)
+	//if _, ok := currentState["nostrocket"]; !ok {
+	k640208 := Kind640208{RocketID: "nostrocket"}
+	j, err := json.Marshal(k640208)
+	if err != nil {
+		library.LogCLI(err.Error(), 0)
+	}
+	if _, err := handle640208(nostr.Event{
+		PubKey:  actors.IgnitionAccount,
+		Content: fmt.Sprintf("%s", j),
+	}); err != nil {
+		library.LogCLI(err.Error(), 0)
+	}
+	//}
+	if debug {
+		fmt.Println(currentState["nostrocket"].data)
+		currentState["nostrocket"].data["7543214dd1afe9b89d9bcd9d3b64d4596b9bdeb9385e95dabc242608de401099"] = Share{
+			LeadTimeLockedShares:   10,
+			LeadTime:               1,
+			LastLtChange:           0,
+			LeadTimeUnlockedShares: 0,
+			OpReturnAddresses:      nil,
 		}
 	}
 	close(ready)
@@ -165,16 +178,17 @@ func TotalVotepower() (int64, error) {
 }
 
 func Permille(signed, total int64) (int64, error) {
-	if signed > total {
+	if signed > total || total == 0 {
 		return 0, fmt.Errorf("invalid permille, numerator %d is greater than denominator %d", signed, total)
 	}
 	s := new(big.Rat)
-	s.SetFrac64(signed, total)
+	fmt.Printf("signed: %d total: %d\n", signed, total)
+	s = s.SetFrac64(signed, total)
 	m := new(big.Rat)
 	m.SetInt64(1000)
 	s = s.Mul(s, m)
-	i := s.Num()
-	return i.Int64(), nil
+	f, _ := s.Float64()
+	return int64(math.Round(f)), nil
 }
 
 func GetPosition(account library.Account) int64 {

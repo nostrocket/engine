@@ -14,12 +14,20 @@ import (
 )
 
 var events = make(map[library.Sha256]nostr.Event)
+var num int64 = 0
+var debug = false
 
 //HandleConsensusEvent e: the consensus event (kind 640064) to handle
 //scEvent: caller should listen on this channel and handle state change event with this ID
 //result: caller should send the result after handling event scEvent
 //publish: caller should publish (to relays) events received on this channel
 func HandleConsensusEvent(e nostr.Event, scEvent chan library.Sha256, scResult chan bool, cPublish chan nostr.Event) error {
+	if debug {
+		cPublish <- deleteEvent(e.ID)
+		num++
+		println(num)
+		return nil
+	}
 	var unmarshalled Kind640064
 	err := json.Unmarshal([]byte(e.Content), &unmarshalled)
 	if err != nil {
@@ -90,10 +98,6 @@ func handleNewConsensusEvent(unmarshalled Kind640064, e nostr.Event, scEvent cha
 		if event.StateChangeEventHandled {
 			if unmarshalled.StateChangeEventID != event.StateChangeEventID {
 				aStateChangeEventHasAlreadyBeenHandledAtThisHeight = true
-				//todo we should still put this into state in case it reaches a higher permille than the current one, just dont process the state change event. Put it into checkpoint and rebuild if it reaches >500 permille.
-				//return fmt.Errorf("we have already handled a different event at this height, cannot process two different events at the same height without wreaking havoc - todo: 4536g45")
-				//todo rebuild state if we see a different inner event getting >500 permille at this height. Delete our consensus event if we have produced one for this height and sign the >500 permille one instead.
-				//store a checkpoint for the >500 permille state at this height (store to disk) reset and rebuild state, and only validate consensus events with this state change event ID at this height.
 			}
 		}
 	}
@@ -116,15 +120,10 @@ func handleNewConsensusEvent(unmarshalled Kind640064, e nostr.Event, scEvent cha
 	}
 	currentInner.Permille = permille
 	//todo verify current bitcoin height, only upsert if claimed == current
-	//currentState.data[unmarshalled.Height][unmarshalled.StateChangeEventID] = currentInner
-	//currentState.persistToDisk()
 	//todo we are not persisting to disk in live mode
 	if currentInner.Permille < 1 {
 		return fmt.Errorf("permille is less than 1")
 	}
-	//what if event is below 500 permille? we still need to sign because otherwise it will never get above 500 permille
-	//solution: rebuild state if we see a different inner event getting >500 permille at this height - add it to checkpoint and rebuild
-	//todo we should always work from checkpointed state if it exists, store local checkpoints every time we pass 500 permille.
 	if currentInner.StateChangeEventHeight == latestHandledHeight+1 {
 		if localEvent {
 			currentInner.StateChangeEventHandled = true
@@ -144,6 +143,7 @@ func handleNewConsensusEvent(unmarshalled Kind640064, e nostr.Event, scEvent cha
 				BitcoinHeight:      currentInner.BitcoinHeight,
 			})
 			if err != nil {
+				library.LogCLI(err.Error(), 1)
 				return err
 			}
 			if err == nil {
@@ -163,7 +163,7 @@ func handleNewConsensusEvent(unmarshalled Kind640064, e nostr.Event, scEvent cha
 		})
 	}
 	//todo check if we have any conflicting consensus states where we have handled the state change event but something else at the same height has a greater permille, then reset and follow that one instead. Store it only as a temporary checkpoint if <500 permille.
-
+	//todo rebuild state if we see a different inner event at this height with a > permille than current. Delete our consensus event if we have produced one for this height and sign the > permille one instead.
 	return nil
 }
 

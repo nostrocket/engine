@@ -46,6 +46,8 @@ func Publish(event nostr.Event) {
 	}()
 }
 
+var debug = false
+
 func handleEvents() {
 	if !started["handleEvents"] {
 		started["handleEvents"] = true
@@ -77,6 +79,9 @@ func handleEvents() {
 					stack.Push(&event)
 				}
 			case <-time.After(timeToWaitBeforeHandlingNewStateChangeEvents):
+				if debug {
+					continue
+				}
 				lastReplayHash = replay.GetStateHash()
 				//todo create exception for ignition event if we are ignition account
 				if eose && shares.VotepowerForAccount(actors.MyWallet().Account) > 0 && votepowerPosition > 0 {
@@ -97,6 +102,7 @@ func handleEvents() {
 						}
 					}
 				}
+
 			case <-actors.GetTerminateChan():
 				//just keeping this here for shutdown hooks
 				actors.GetWaitGroup().Done()

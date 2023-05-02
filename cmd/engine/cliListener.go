@@ -36,9 +36,12 @@ func cliListener(interrupt chan struct{}) {
 			m := shares.GetMapped()
 			for id, m2 := range m {
 				fmt.Printf("\n--------- Subrocket Name: %s -----------\n", id)
+				vp, _ := shares.TotalVotepower()
+				fmt.Printf("\nTotal Votepower: %d\n", vp)
 				for account, share := range m2 {
-					fmt.Printf("\nAccount: %s\nLeadTimeLockedShares: %d\nLeadTime: %d\nLastLeadTimeChange: %d\nLeadTimeUnlockedShares: %d\nOpReturnAddresses: %s\n\n",
-						account, share.LeadTimeLockedShares, share.LeadTime, share.LeadTimeUnlockedShares, share.LastLtChange, share.OpReturnAddresses)
+					pm, _ := shares.Permille(shares.VotepowerForAccount(account), vp)
+					fmt.Printf("\nAccount: %s\nLeadTimeLockedShares: %d\nLeadTime: %d\nLastLeadTimeChange: %d\nLeadTimeUnlockedShares: %d\nOpReturnAddresses: %s\nVotepower: %d Permille: %d\n",
+						account, share.LeadTimeLockedShares, share.LeadTime, share.LeadTimeUnlockedShares, share.LastLtChange, share.OpReturnAddresses, shares.VotepowerForAccount(account), pm)
 				}
 				fmt.Printf("\n--------- End of data for: %s -----------\n\n", id)
 			}
