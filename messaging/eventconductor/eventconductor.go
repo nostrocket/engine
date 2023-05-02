@@ -59,6 +59,7 @@ func handleEvents() {
 		go eventcatcher.SubscribeToTree(eventChan, publishChan, eoseChan)
 		var timeToWaitBeforeHandlingNewStateChangeEvents time.Duration
 		votepowerPosition := shares.GetPosition(actors.MyWallet().Account)
+		fmt.Println(votepowerPosition)
 		if votepowerPosition > 0 {
 			timeToWaitBeforeHandlingNewStateChangeEvents = time.Duration(votepowerPosition * 1000000 * 100)
 		}
@@ -71,6 +72,7 @@ func handleEvents() {
 			case event := <-eventChan:
 				addEventToCache(event)
 				if event.Kind == 640064 {
+					//fmt.Printf("\nconsensus event from relay:\n%#v\n", event)
 					err := handleConsensusEvent(event)
 					if err != nil {
 						library.LogCLI(err.Error(), 1)

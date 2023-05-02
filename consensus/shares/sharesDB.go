@@ -26,7 +26,7 @@ var currentStateMu = &deadlock.Mutex{}
 var started = false
 var available = &deadlock.Mutex{}
 
-var debug = true
+var debug = false
 
 // StartDb starts the database for this mind (the Mind-state). It blocks until the database is ready to use.
 func startDb() {
@@ -55,16 +55,6 @@ func startDb() {
 func start(ready chan struct{}) {
 	// We add a delta to the provided waitgroup so that upstream knows when the database has been safely shut down
 	actors.GetWaitGroup().Add(1)
-	// Load current shares from disk
-	//for s, _ := range subrockets.Names() {
-	//	c, ok := actors.Open("shares", s)
-	//	if ok {
-	//		d := currentState[s]
-	//		d.restoreFromDisk(c)
-	//		currentState[s] = d
-	//	}
-	//}
-	//if _, ok := currentState["nostrocket"]; !ok {
 	k640208 := Kind640208{RocketID: "nostrocket"}
 	j, err := json.Marshal(k640208)
 	if err != nil {
@@ -182,7 +172,6 @@ func Permille(signed, total int64) (int64, error) {
 		return 0, fmt.Errorf("invalid permille, numerator %d is greater than denominator %d", signed, total)
 	}
 	s := new(big.Rat)
-	fmt.Printf("signed: %d total: %d\n", signed, total)
 	s = s.SetFrac64(signed, total)
 	m := new(big.Rat)
 	m.SetInt64(1000)

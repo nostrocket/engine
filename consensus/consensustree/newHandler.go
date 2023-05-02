@@ -55,10 +55,9 @@ func handleNewConsensusEvent(unmarshalled Kind640064, e nostr.Event, scEvent cha
 			return fmt.Errorf("we have a checkpoint at this height and it doesn't match the event provided")
 		}
 	}
-	if !checkTags(e) {
-		events[e.ID] = e
-		return nil
-	}
+	//if e.PubKey == actors.MyWallet().Account {
+	//	fmt.Println(59)
+	//}
 	var current map[library.Sha256]TreeEvent
 	var exists bool
 	current, exists = currentState.data[unmarshalled.Height]
@@ -82,8 +81,16 @@ func handleNewConsensusEvent(unmarshalled Kind640064, e nostr.Event, scEvent cha
 			BitcoinHeight:           0,
 		}
 	}
+	if e.PubKey == actors.MyWallet().Account && currentInner.StateChangeEventHandled && currentInner.IHaveSigned {
+		cPublish <- deleteEvent(e.ID)
+		return nil
+	}
+	if !checkTags(e) && !currentInner.StateChangeEventHandled {
+		events[e.ID] = e
+		return nil
+	}
 	_, latestHandledHeight := getLatestHandled()
-	if unmarshalled.Height > latestHandledHeight+1 {
+	if unmarshalled.Height > latestHandledHeight+1 && !currentInner.StateChangeEventHandled {
 		events[e.ID] = e
 		return nil
 	}
@@ -148,7 +155,7 @@ func handleNewConsensusEvent(unmarshalled Kind640064, e nostr.Event, scEvent cha
 			}
 			if err == nil {
 				cPublish <- ce
-				currentInner.IHaveSigned = true
+				//currentInner.IHaveSigned = true
 			}
 		}
 	}
