@@ -1,8 +1,9 @@
 # Nostrocket Engine
 Problem: can't reach consensus about the current state of Nostrocket and Subrockets
 
-The Nostrocket Engine subscribes to all events that are in reply to the ignition event: `503941a9939a4337d9aef7b92323c353441cb5ebe79f13fed77aeac615116354`.
+### Nostrocket Engine is a replicated state machine built with Nostr and Bitcoin.
 
-It parses each event and validats it against the Nostrocket Protocol, and builds its internal state.
+It's essentially a Bitcoin "Layer 2" which parses nostr events, updates state if the event complies with the protocol, and then publishes the new state as nostr event which can be consumed by nostr clients.
 
+The distributed consensus layer makes state immutable by putting a merkle root into the Bitcoin chain.
 
