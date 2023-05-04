@@ -5,12 +5,12 @@ import (
 	"time"
 
 	"github.com/eiannone/keyboard"
-	"nostrocket/consensus/consensustree"
-	"nostrocket/consensus/identity"
-	"nostrocket/consensus/replay"
-	"nostrocket/consensus/shares"
 	"nostrocket/engine/actors"
 	"nostrocket/messaging/eventconductor"
+	"nostrocket/state/consensustree"
+	"nostrocket/state/identity"
+	"nostrocket/state/replay"
+	"nostrocket/state/shares"
 )
 
 // cliListener is a cheap and nasty way to speed up development cycles. It listens for keypresses and executes commands.

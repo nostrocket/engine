@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/nbd-wtf/go-nostr"
-	"nostrocket/consensus/identity"
-	"nostrocket/consensus/subrockets"
 	"nostrocket/engine/library"
+	"nostrocket/state/identity"
+	"nostrocket/state/subrockets"
 )
 
 //create new subrocket shares

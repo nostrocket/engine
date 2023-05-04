@@ -1,6 +1,7 @@
 package consensustree
 
 //todo are we handling out-of order consensus events? make sure
+//todo: what about if we are new votepower and haven't signed anything yet?
 import (
 	"encoding/json"
 	"fmt"
@@ -8,9 +9,9 @@ import (
 	"time"
 
 	"github.com/nbd-wtf/go-nostr"
-	"nostrocket/consensus/shares"
 	"nostrocket/engine/actors"
 	"nostrocket/engine/library"
+	"nostrocket/state/shares"
 )
 
 var events = make(map[library.Sha256]nostr.Event)
@@ -127,7 +128,6 @@ func handleNewConsensusEvent(unmarshalled Kind640064, e nostr.Event, scEvent cha
 	}
 	currentInner.Permille = permille
 	//todo verify current bitcoin height, only upsert if claimed == current
-	//todo we are not persisting to disk in live mode
 	if currentInner.Permille < 1 {
 		return fmt.Errorf("permille is less than 1")
 	}

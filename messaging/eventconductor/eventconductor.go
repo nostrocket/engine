@@ -7,14 +7,14 @@ import (
 
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/sasha-s/go-deadlock"
-	"nostrocket/consensus/consensustree"
-	"nostrocket/consensus/identity"
-	"nostrocket/consensus/replay"
-	"nostrocket/consensus/shares"
-	"nostrocket/consensus/subrockets"
 	"nostrocket/engine/actors"
 	"nostrocket/engine/library"
 	"nostrocket/messaging/eventcatcher"
+	"nostrocket/state/consensustree"
+	"nostrocket/state/identity"
+	"nostrocket/state/replay"
+	"nostrocket/state/shares"
+	"nostrocket/state/subrockets"
 )
 
 type EventMap map[string]nostr.Event
@@ -59,7 +59,6 @@ func handleEvents() {
 		go eventcatcher.SubscribeToTree(eventChan, publishChan, eoseChan)
 		var timeToWaitBeforeHandlingNewStateChangeEvents time.Duration
 		votepowerPosition := shares.GetPosition(actors.MyWallet().Account)
-		fmt.Println(votepowerPosition)
 		if votepowerPosition > 0 {
 			timeToWaitBeforeHandlingNewStateChangeEvents = time.Duration(votepowerPosition * 1000000 * 100)
 		}

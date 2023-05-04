@@ -9,9 +9,9 @@ import (
 
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/sasha-s/go-deadlock"
-	"nostrocket/consensus/subrockets"
 	"nostrocket/engine/actors"
 	"nostrocket/engine/library"
+	"nostrocket/state/subrockets"
 )
 
 type db struct {

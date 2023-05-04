@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/nbd-wtf/go-nostr"
-	"nostrocket/consensus/identity"
 	"nostrocket/engine/library"
+	"nostrocket/state/identity"
 )
 
 func HandleEvent(event nostr.Event) (m Mapped, e error) {
