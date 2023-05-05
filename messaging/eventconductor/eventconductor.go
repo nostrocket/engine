@@ -255,7 +255,9 @@ func handleEvent(e nostr.Event, fromConsensusEvent bool) error {
 			if err == nil {
 				//publish our current state
 				//todo only publish if we are at the current bitcoin tip
-				Publish(actors.CurrentStateEventBuilder(fmt.Sprintf("%s", b)))
+				if !fromConsensusEvent {
+					Publish(actors.CurrentStateEventBuilder(fmt.Sprintf("%s", b)))
+				}
 				return nil
 			}
 		}
