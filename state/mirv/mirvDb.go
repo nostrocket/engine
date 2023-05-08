@@ -1,4 +1,4 @@
-package subrockets
+package mirv
 
 import (
 	"github.com/sasha-s/go-deadlock"
@@ -31,7 +31,7 @@ func startDb() {
 		go start(ready)
 		// when the database has started, the goroutine will close the `ready` channel.
 		<-ready //This channel listener blocks until closed by `startDb`.
-		library.LogCLI("Subrockets Mind has started", 4)
+		library.LogCLI("Mirvs Mind has started", 4)
 	}
 }
 
@@ -39,7 +39,7 @@ func start(ready chan struct{}) {
 	// We add a delta to the provided waitgroup so that upstream knows when the database has been safely shut down
 	actors.GetWaitGroup().Add(1)
 	// Load current shares from disk
-	//c, ok := actors.Open("subrockets", "current")
+	//c, ok := actors.Open("mirvs", "current")
 	//if ok {
 	//	currentState.restoreFromDisk(c)
 	//}
@@ -59,10 +59,10 @@ func start(ready chan struct{}) {
 	//if err != nil {
 	//	library.LogCLI(err.Error(), 0)
 	//}
-	//actors.Write("subrockets", "current", b)
+	//actors.Write("mirvs", "current", b)
 	//currentState.persistToDisk()
 	actors.GetWaitGroup().Done()
-	library.LogCLI("Subrockets Mind has shut down", 4)
+	library.LogCLI("Mirvs Mind has shut down", 4)
 }
 
 //func (s *db) restoreFromDisk(f *os.File) {
@@ -86,7 +86,7 @@ func start(ready chan struct{}) {
 //	if err != nil {
 //		library.LogCLI(err.Error(), 0)
 //	}
-//	actors.Write("subrockets", "current", b)
+//	actors.Write("mirvs", "current", b)
 //}
 
 func GetMap() Mapped {

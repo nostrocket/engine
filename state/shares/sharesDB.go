@@ -11,7 +11,7 @@ import (
 	"github.com/sasha-s/go-deadlock"
 	"nostrocket/engine/actors"
 	"nostrocket/engine/library"
-	"nostrocket/state/subrockets"
+	"nostrocket/state/mirv"
 )
 
 type db struct {
@@ -34,7 +34,7 @@ func startDb() {
 	defer available.Unlock()
 	if !started {
 		started = true
-		for s, _ := range subrockets.Names() {
+		for s, _ := range mirv.Names() {
 			currentState[s] = db{
 				rocketID: s,
 				data:     make(map[library.Account]Share),

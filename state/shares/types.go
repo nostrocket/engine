@@ -29,7 +29,7 @@ type Kind640202 struct {
 }
 
 //Kind640208 STATUS:DRAFT
-//Used for creating a new cap table for a subrocket
+//Used for creating a new cap table for a mirv
 type Kind640208 struct {
 	RocketID library.RocketID `json:"rocket_id"`
 }

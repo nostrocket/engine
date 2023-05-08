@@ -10,19 +10,19 @@ The distributed consensus layer makes state immutable by putting a merkle root i
 ### Event Kinds
 Nostrocket uses event kinds 640000 to 649999.
 
-Nostrocket is composed of multiple state machines, and more can be added at any time.
+Nostrocket is composed of multiple state machines called Minds. More can be added at any time.
 
-Event kinds are broken down into `64` indicating a Nostrocket event, followed by two more integers indicating the state machine, and another two indicating sub-state or action type.
+Event kinds are broken down into `64` indicating a Nostrocket event, followed by two more integers indicating the Mind, and another two indicating sub-state or action type within that Mind.
 
 
-| Description | Nostrocket  | State Machine | Sub-state |
-| ------------- | ------------- | ------------- | ------------- |
-| Lead Time Adjustment | 64  | 02 [Shares]  | 00 |
-| Share Transfer | 64  | 02  | 02 |
-| New Payload Cap Table | 64  | 02  | 08 |
-| Votepower Signed State | 64  | 00 [Consensus]  | 64 |
-| Add Identity to Tree | 64  | 04 [Identity]  | 02 |
-| Add OP_RETURN Address | 64  | 04 | 06 |
+| Description            | Nostrocket  | Mind | State or Action |
+|------------------------| ------------- |---------------|-----------------|
+| Lead Time Adjustment   | 64  | 02 [Shares]   | 00              |
+| Share Transfer         | 64  | 02            | 02              |
+| New Mirv Cap Table     | 64  | 02            | 08              |
+| Votepower Signed State | 64  | 00 [Consensus] | 64              |
+| Add Identity to Tree   | 64  | 04 [Identity] | 02              |
+| Add OP_RETURN Address  | 64  | 04            | 06              |
 
 #### Event Structure
 JSON in content is a bad idea, but I didn't think that through before I started doing it.
@@ -42,4 +42,4 @@ Events which do not have replay protection MUST NOT cause a state change.
 
 
 ### Terminology
-**Payload:** A Nostrocket Payload is an independent project within Nostrocket. You could fork the entire Nostrocket project, but most people will simply want to create a new Payload instead. 
+**Mirv:** A Nostrocket Mirv is an independent project launched using Nostrocket.

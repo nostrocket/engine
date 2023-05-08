@@ -35,7 +35,7 @@ func cliListener(interrupt chan struct{}) {
 		case "s":
 			m := shares.GetMapped()
 			for id, m2 := range m {
-				fmt.Printf("\n--------- Subrocket Name: %s -----------\n", id)
+				fmt.Printf("\n--------- Mirv Name: %s -----------\n", id)
 				vp, _ := shares.TotalVotepower()
 				fmt.Printf("\nTotal Votepower: %d\n", vp)
 				for account, share := range m2 {

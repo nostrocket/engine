@@ -13,7 +13,7 @@ const ReplayPrevention string = "24c30ad7f036ed49379b5d1209836d1ff6795adb34da2d3
 const ConsensusTree string = "e54a960017e7ed4d485e7de34312b0f583c0a1920a2ae60d054a0ff78894fd2f"
 const Identity string = "0a73208becd0b1a9d294e6caef14352047ab44b848930e6979937fe09effaf71"
 const Shares string = "7fd9810bdb8bc635633cc4e3d0888e395420aedc7d28778c100793d1d3bc09a6"
-const Subrockets string = "c7f87218e62f6d41fa2f5b2480210ed1d48b2609e03e9b4b500a3b64e3c08554"
+const Mirvs string = "c7f87218e62f6d41fa2f5b2480210ed1d48b2609e03e9b4b500a3b64e3c08554"
 const CurrentStates string = "0255594820a3ddc5b603d4e37ba6b2325879aebec401b86f9d69f5fd3864c203"
 const IgnitionAccount library.Account = "b4f36e2a63792324a92f3b7d973fcc33eaa7720aaeee71729ac74d7ba7677675"
 

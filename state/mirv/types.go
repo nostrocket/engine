@@ -1,4 +1,4 @@
-package subrockets
+package mirv
 
 import (
 	"nostrocket/engine/library"

@@ -83,6 +83,7 @@ func handleNewConsensusEvent(unmarshalled Kind640064, e nostr.Event, scEvent cha
 		}
 	}
 	if e.PubKey == actors.MyWallet().Account && currentInner.StateChangeEventHandled && currentInner.IHaveSigned {
+		fmt.Println(time.Now().Unix() - e.CreatedAt.Unix())
 		cPublish <- deleteEvent(e.ID)
 		return nil
 	}
@@ -231,10 +232,10 @@ func CreateNewConsensusEvent(e nostr.Event, publish chan nostr.Event) error {
 	if err != nil {
 		return err
 	}
-	err = handleNewConsensusEvent(inner, newConsensusEvent, make(chan library.Sha256), make(chan bool), make(chan nostr.Event), true)
-	if err != nil {
-		return err
-	}
+	//err = handleNewConsensusEvent(inner, newConsensusEvent, make(chan library.Sha256), make(chan bool), make(chan nostr.Event), true)
+	//if err != nil {
+	//	return err
+	//}
 	publish <- newConsensusEvent
 	return nil
 }

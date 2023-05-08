@@ -12,9 +12,9 @@ import (
 	"nostrocket/messaging/eventcatcher"
 	"nostrocket/state/consensustree"
 	"nostrocket/state/identity"
+	"nostrocket/state/mirv"
 	"nostrocket/state/replay"
 	"nostrocket/state/shares"
-	"nostrocket/state/subrockets"
 )
 
 type EventMap map[string]nostr.Event
@@ -30,7 +30,7 @@ func Start() {
 	eventsInState[actors.ConsensusTree] = nostr.Event{}
 	eventsInState[actors.Identity] = nostr.Event{}
 	eventsInState[actors.Shares] = nostr.Event{}
-	eventsInState[actors.Subrockets] = nostr.Event{}
+	eventsInState[actors.Mirvs] = nostr.Event{}
 	eventsInStateLock.Unlock()
 	go handleEvents()
 }
@@ -286,8 +286,8 @@ func routeEvent(e nostr.Event) (mindName string, newState any, err error) {
 		mindName = "shares"
 		newState, err = shares.HandleEvent(e)
 	case k >= 640600 && k <= 640699:
-		mindName = "subrockets"
-		newState, err = subrockets.HandleEvent(e)
+		mindName = "mirvs"
+		newState, err = mirv.HandleEvent(e)
 	case k == 640064:
 		fmt.Printf("\n640064\n%#v\n", e)
 	}
