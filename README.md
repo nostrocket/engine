@@ -17,9 +17,12 @@ Event kinds are broken down into `64` indicating a Nostrocket event, followed by
 
 | Description | Nostrocket  | State Machine | Sub-state |
 | ------------- | ------------- | ------------- | ------------- |
-| Lead Time Adjustment | 64  | 02  | 00 |
+| Lead Time Adjustment | 64  | 02 [Shares]  | 00 |
 | Share Transfer | 64  | 02  | 02 |
 | New Payload Cap Table | 64  | 02  | 08 |
+| Votepower Signed State | 64  | 00 [Consensus]  | 64 |
+| Add Identity to Tree | 64  | 04 [Identity]  | 02 |
+| Add OP_RETURN Address | 64  | 04 | 06 |
 
 #### Event Structure
 JSON in content is a bad idea, but I didn't think that through before I started doing it.
@@ -29,6 +32,14 @@ There is some legacy code here which uses JSON in content.
 I'm migrating this to tags.
 
 The Content field will be reserved for human-readable text from the user who creates an event.
+
+#### Replay Protection
+`["r", "<last successful state-change event from this pubkey>"]`   
+Events which do not have replay protection MUST NOT cause a state change.
+
+#### Bitcoin 
+`["btc", "<height int decimal>", "<header 32 bytes hex>", "<unix timestamp int decimal>"]`
+
 
 ### Terminology
 **Payload:** A Nostrocket Payload is an independent project within Nostrocket. You could fork the entire Nostrocket project, but most people will simply want to create a new Payload instead. 
