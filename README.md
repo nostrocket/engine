@@ -12,8 +12,14 @@ Nostrocket uses event kinds 640000 to 649999.
 
 Nostrocket is composed of multiple state machines, and more can be added at any time.
 
-|64|XX|XX|
-|Nostrocket|State Machine|Sub-state|
+Event kinds are broken down into `64` indicating a Nostrocket event, followed by two more integers indicating the state machine, and another two indicating sub-state or action type.
+
+
+| Description | Nostrocket  | State Machine | Sub-state |
+| ------------- | ------------- | ------------- | ------------- |
+| Lead Time Adjustment | 64  | 02  | 00 |
+| Share Transfer | 64  | 02  | 02 |
+| New Payload Cap Table | 64  | 02  | 08 |
 
 #### Event Structure
 JSON in content is a bad idea, but I didn't think that through before I started doing it.
