@@ -16,7 +16,7 @@ const StateChangeRequests string = "7a22f580d253c4142aa4e6b28d577b2d59fdd30083b0
 const Identity string = "0a73208becd0b1a9d294e6caef14352047ab44b848930e6979937fe09effaf71"
 const Shares string = "7fd9810bdb8bc635633cc4e3d0888e395420aedc7d28778c100793d1d3bc09a6"
 const Mirvs string = "c7f87218e62f6d41fa2f5b2480210ed1d48b2609e03e9b4b500a3b64e3c08554"
-const Problems string = "8d3bb1ebbaeb005857c302c81f2ffa98b952e1d59a61a0bfc11c211f38bce534"
+const Problems string = "77c3bf5382b62d16a70df8e2932a512e2fce72458ee47b73feaef8ae8b9bd62b"
 
 //Anchors for outgoing event trees
 const CurrentStates string = "0255594820a3ddc5b603d4e37ba6b2325879aebec401b86f9d69f5fd3864c203"
