@@ -13,6 +13,7 @@ import (
 	"nostrocket/state/consensustree"
 	"nostrocket/state/identity"
 	"nostrocket/state/mirv"
+	"nostrocket/state/problems"
 	"nostrocket/state/replay"
 	"nostrocket/state/shares"
 )
@@ -288,6 +289,9 @@ func routeEvent(e nostr.Event) (mindName string, newState any, err error) {
 	case k >= 640600 && k <= 640699:
 		mindName = "mirvs"
 		newState, err = mirv.HandleEvent(e)
+	case k >= 641800 && k <= 641899:
+		mindName = "problems"
+		newState, err = problems.HandleEvent(e)
 	case k == 640064:
 		fmt.Printf("\n640064\n%#v\n", e)
 	}

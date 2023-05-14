@@ -12,6 +12,7 @@ type CurrentState struct {
 	Shares   any `json:"shares"`
 	Replay   any `json:"replay"`
 	Mirvs    any `json:"mirvs"`
+	Problems any `json:"problems"`
 	mu       *deadlock.Mutex
 }
 
@@ -19,6 +20,7 @@ var currentState = CurrentState{
 	Identity: nil,
 	Shares:   nil,
 	Replay:   nil,
+	Problems: nil,
 	mu:       &deadlock.Mutex{},
 }
 
@@ -34,6 +36,8 @@ func AppendState(name string, state any) (CurrentState, bool) {
 		currentState.Replay = state
 	case "mirvs":
 		currentState.Mirvs = state
+	case "problems":
+		currentState.Problems = state
 	default:
 		return CurrentState{}, false
 	}

@@ -52,7 +52,7 @@ A problem event MAY contain a tag to indicate if the problem has been claimed or
 
 Any pubkey in the Identity Tree MAY create a problem event containing this tag to claim an event to work on.
 
-Clients SHOULD ignore problem events containing a `claimed_by` tag if the is an existing claim.
+Clients SHOULD ignore problem events containing a `claimed_by` tag if there is an existing claim.
 
 ```
 ["claimed_by", "<pubkey>"]

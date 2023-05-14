@@ -18,7 +18,6 @@ func HandleEvent(event nostr.Event) (m Mapped, e error) {
 		var updates int64 = 0
 		existingIdentity := getLatestIdentity(event.PubKey)
 		var updateIdents []Identity
-
 		if event.Kind == 640400 {
 			var unmarshalled Kind640400
 			err := json.Unmarshal([]byte(event.Content), &unmarshalled)

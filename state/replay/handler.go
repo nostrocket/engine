@@ -9,7 +9,7 @@ import (
 
 func HandleEvent(event nostr.Event) (chan bool, chan Mapped, bool) {
 	startDb()
-	claimedHash, ok := library.GetReplayTag(event)
+	claimedHash, ok := library.GetFirstTag(event, "r")
 	if ok {
 		if claimedHash == getCurrentHashForAccount(event.PubKey) {
 			closer := make(chan bool)
