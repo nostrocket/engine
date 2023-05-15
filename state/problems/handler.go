@@ -6,6 +6,7 @@ import (
 	"github.com/nbd-wtf/go-nostr"
 	"nostrocket/engine/actors"
 	"nostrocket/engine/library"
+	"nostrocket/state/identity"
 )
 
 func HandleEvent(event nostr.Event) (m Mapped, e error) {
@@ -25,25 +26,34 @@ func HandleEvent(event nostr.Event) (m Mapped, e error) {
 }
 
 func handle641800(event nostr.Event) (m Mapped, e error) {
+	fmt.Printf("%#v", event)
 	//var updates int64 = 0
-	if t, ok := library.GetReply(event); ok {
+	if parent, ok := library.GetReply(event); ok {
 		//exception for ignition problem
-		if len(currentState.data) == 0 && event.PubKey == actors.IgnitionAccount && t == actors.StateChangeRequests {
-			p := Problem{
-				UID:       event.ID,
-				Parent:    actors.StateChangeRequests,
-				Title:     event.Content,
-				Body:      "",
-				Closed:    false,
-				ClaimedAt: 0,
-				ClaimedBy: "",
-				CreatedBy: event.PubKey,
-			}
-			currentState.upsert(p.UID, p)
-			return getMap(), nil
+		if len(currentState.data) == 0 && event.PubKey == actors.IgnitionAccount && parent == actors.StateChangeRequests {
+			return insertProblem(event, actors.StateChangeRequests)
 		} else {
-
+			if _, exists := currentState.data[event.ID]; !exists {
+				if identity.IsUSH(event.PubKey) {
+					return insertProblem(event, parent)
+				}
+			}
 		}
 	}
 	return nil, fmt.Errorf("no state changed")
+}
+
+func insertProblem(event nostr.Event, parent library.Sha256) (m Mapped, e error) {
+	p := Problem{
+		UID:       event.ID,
+		Parent:    parent,
+		Title:     event.Content,
+		Body:      "",
+		Closed:    false,
+		ClaimedAt: 0,
+		ClaimedBy: "",
+		CreatedBy: event.PubKey,
+	}
+	currentState.upsert(p.UID, p)
+	return getMap(), nil
 }
