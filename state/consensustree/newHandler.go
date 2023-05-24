@@ -22,7 +22,7 @@ var debug = false
 //scEvent: caller should listen on this channel and handle state change event with this ID
 //result: caller should send the result after handling event scEvent
 //publish: caller should publish (to relays) events received on this channel
-func HandleConsensusEvent(e nostr.Event, scEvent chan library.Sha256, scResult chan bool, cPublish chan nostr.Event) error {
+func HandleConsensusEvent(e nostr.Event, scEvent chan library.Sha256, scResult chan bool, cPublish chan nostr.Event, localEvent bool) error {
 	if debug {
 		cPublish <- deleteEvent(e.ID)
 		num++
@@ -39,7 +39,7 @@ func HandleConsensusEvent(e nostr.Event, scEvent chan library.Sha256, scResult c
 	}
 	currentState.mutex.Lock()
 	defer currentState.mutex.Unlock()
-	return handleNewConsensusEvent(unmarshalled, e, scEvent, scResult, cPublish, false)
+	return handleNewConsensusEvent(unmarshalled, e, scEvent, scResult, cPublish, localEvent)
 }
 
 func handleNewConsensusEvent(unmarshalled Kind640064, e nostr.Event, scEvent chan library.Sha256, scResult chan bool, cPublish chan nostr.Event, localEvent bool) error {
@@ -52,8 +52,9 @@ func handleNewConsensusEvent(unmarshalled Kind640064, e nostr.Event, scEvent cha
 		if c.StateChangeEventID != unmarshalled.StateChangeEventID {
 			if e.PubKey == actors.MyWallet().Account {
 				cPublish <- deleteEvent(e.ID)
+				library.LogCLI(fmt.Sprintf("attempting to delete consensus event created %f seconds ago", time.Since(e.CreatedAt).Seconds()), 2)
 			}
-			return fmt.Errorf("we have a checkpoint at this height and it doesn't match the event provided")
+			return fmt.Errorf("trying to parse %s at height %d, but we already have a checkpoint for %s at height %d", unmarshalled.StateChangeEventID, unmarshalled.Height, c.StateChangeEventID, c.StateChangeEventHeight)
 		}
 	}
 	//if e.PubKey == actors.MyWallet().Account {
@@ -82,7 +83,7 @@ func handleNewConsensusEvent(unmarshalled Kind640064, e nostr.Event, scEvent cha
 			BitcoinHeight:           0,
 		}
 	}
-	if e.PubKey == actors.MyWallet().Account && currentInner.StateChangeEventHandled && currentInner.IHaveSigned {
+	if e.PubKey == actors.MyWallet().Account && currentInner.StateChangeEventHandled && currentInner.IHaveSigned && !localEvent {
 		fmt.Println(time.Now().Unix() - e.CreatedAt.Unix())
 		cPublish <- deleteEvent(e.ID)
 		return nil
@@ -216,28 +217,28 @@ func deleteEvent(id library.Sha256) (r nostr.Event) {
 	return
 }
 
-func CreateNewConsensusEvent(e nostr.Event, publish chan nostr.Event) error {
+func CreateNewConsensusEvent(ev nostr.Event) (n nostr.Event, e error) {
 	if shares.VotepowerForAccount(actors.MyWallet().Account) < 1 {
-		return fmt.Errorf("current wallet has no votepower")
+		return n, fmt.Errorf("current wallet has no votepower")
 	}
 	currentState.mutex.Lock()
 	defer currentState.mutex.Unlock()
 	_, height := getLatestHandled()
 	inner := Kind640064{
-		StateChangeEventID: e.ID,
+		StateChangeEventID: ev.ID,
 		Height:             height + 1,
 		BitcoinHeight:      0, //todo bitcoin height
 	}
 	newConsensusEvent, err := produceConsensusEvent(inner)
 	if err != nil {
-		return err
+		return n, err
 	}
 	//err = handleNewConsensusEvent(inner, newConsensusEvent, make(chan library.Sha256), make(chan bool), make(chan nostr.Event), true)
 	//if err != nil {
 	//	return err
 	//}
-	publish <- newConsensusEvent
-	return nil
+	//publish <- newConsensusEvent
+	return newConsensusEvent, e
 }
 
 func produceConsensusEvent(data Kind640064) (nostr.Event, error) {

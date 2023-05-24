@@ -9,6 +9,7 @@ import (
 	"nostrocket/messaging/eventconductor"
 	"nostrocket/state/consensustree"
 	"nostrocket/state/identity"
+	"nostrocket/state/problems"
 	"nostrocket/state/replay"
 	"nostrocket/state/shares"
 )
@@ -79,6 +80,11 @@ func cliListener(interrupt chan struct{}) {
 				for _, event := range m {
 					fmt.Printf("\n%#v\n", event)
 				}
+			}
+		case "p":
+			fmt.Println("-------- PROBLEMS ---------")
+			for _, problem := range problems.GetMap() {
+				fmt.Printf("\nUID: %s\nPARENT: %s\nTITLE: %s\nBODY: %s\nCREATED BY: %s\n\n", problem.UID, problem.Parent, problem.Title, problem.Body, problem.CreatedBy)
 			}
 		}
 	}

@@ -71,11 +71,11 @@ func handleEvents() {
 				eose = true
 			case event := <-eventChan:
 				addEventToCache(event)
-				if event.Kind == 640064 {
+				if event.Kind == 640064 && !eventIsInState(event.ID) {
 					//fmt.Printf("\nconsensus event from relay:\n%#v\n", event)
 					err := handleConsensusEvent(event)
 					if err != nil {
-						library.LogCLI(err.Error(), 1)
+						library.LogCLI(err.Error(), 2)
 					}
 				} else {
 					stack.Push(&event)
@@ -114,17 +114,23 @@ func handleEvents() {
 	}
 }
 
-func processStateChangeEventOutOfConsensus(event *nostr.Event) {
+func processStateChangeEventOutOfConsensus(event *nostr.Event) error {
 	err := handleEvent(*event, false)
-	if err != nil {
-		//library.LogCLI(err.Error(), 2)
-	}
 	if err == nil {
-		err = consensustree.CreateNewConsensusEvent(*event, publishChan)
+		consensusEvent, err := consensustree.CreateNewConsensusEvent(*event)
 		if err != nil {
-			library.LogCLI(err.Error(), 1)
+			return err
+		}
+		err = consensustree.HandleConsensusEvent(consensusEvent, nil, nil, nil, true)
+		if err != nil {
+			return err
+		}
+		if err == nil {
+			addEventToState(consensusEvent.ID)
+			Publish(consensusEvent)
 		}
 	}
+	return err
 }
 
 func handleConsensusEvent(e nostr.Event) error {
@@ -156,7 +162,7 @@ func handleConsensusEvent(e nostr.Event) error {
 			}
 		}
 	}()
-	return consensustree.HandleConsensusEvent(e, toHandle, returnResult, consensusEventsToPublish)
+	return consensustree.HandleConsensusEvent(e, toHandle, returnResult, consensusEventsToPublish, false)
 }
 
 var eventCache = make(map[library.Sha256]nostr.Event)
@@ -233,21 +239,17 @@ func handleEvent(e nostr.Event, fromConsensusEvent bool) error {
 		return fmt.Errorf("event %s is already in our local state", e.ID)
 	}
 	library.LogCLI(fmt.Sprintf("Attempting to handle state change event %s [consensus mode: %v]", e.ID, fromConsensusEvent), 4)
-	closer, returner, ok := replay.HandleEvent(e)
+	closer, replayState, ok := replay.HandleEvent(e)
 	if ok {
 		eventsInState[e.ID] = e
 		//fmt.Printf("\n---HANDLING EVENT---\n%#v\n--------\n", e)
 		mindName, mappedState, err := routeEvent(e)
-		if err != nil {
-			closer <- false
-			close(returner)
-			return err
-		} else {
+		if err == nil {
 			closer <- true
-			mappedReplay := <-returner
-			close(returner)
+			newReplayState := <-replayState
+			close(replayState)
 			library.LogCLI(fmt.Sprintf("State has been updated by %s [consensus mode: %v]", e.ID, fromConsensusEvent), 3)
-			actors.AppendState("replay", mappedReplay)
+			actors.AppendState("replay", newReplayState)
 			n, _ := actors.AppendState(mindName, mappedState)
 			b, err := json.Marshal(n)
 			if err != nil {
@@ -262,6 +264,11 @@ func handleEvent(e nostr.Event, fromConsensusEvent bool) error {
 				return nil
 			}
 		}
+		if err != nil {
+			closer <- false
+			close(replayState)
+			return err
+		}
 	}
 	return fmt.Errorf("invalid replay")
 }
@@ -271,6 +278,12 @@ func eventIsInState(e library.Sha256) bool {
 	defer eventsInStateLock.Unlock()
 	_, exists := eventsInState[e]
 	return exists
+}
+
+func addEventToState(e library.Sha256) {
+	eventsInStateLock.Lock()
+	defer eventsInStateLock.Unlock()
+	eventsInState[e] = nostr.Event{}
 }
 
 func routeEvent(e nostr.Event) (mindName string, newState any, err error) {

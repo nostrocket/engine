@@ -26,7 +26,7 @@ func HandleEvent(event nostr.Event) (m Mapped, e error) {
 }
 
 func handle641800(event nostr.Event) (m Mapped, e error) {
-	fmt.Printf("%#v", event)
+	//fmt.Printf("%#v", event)
 	//var updates int64 = 0
 	if parent, ok := library.GetReply(event); ok {
 		//exception for ignition problem
