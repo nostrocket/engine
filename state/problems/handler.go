@@ -35,7 +35,9 @@ func handle641800(event nostr.Event) (m Mapped, e error) {
 		} else {
 			if _, exists := currentState.data[event.ID]; !exists {
 				if identity.IsUSH(event.PubKey) {
-					return insertProblem(event, parent)
+					if _, parentExists := currentState.data[parent]; parentExists {
+						return insertProblem(event, parent)
+					}
 				}
 			}
 		}
