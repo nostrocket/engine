@@ -12,7 +12,7 @@ type db struct {
 }
 
 var currentState = db{
-	data:  make(map[library.RocketID]Problem),
+	data:  make(map[library.Sha256]Problem),
 	mutex: &deadlock.Mutex{},
 }
 
@@ -54,14 +54,14 @@ func GetMap() Mapped {
 }
 
 func getMap() Mapped {
-	m := make(map[library.RocketID]Problem)
+	m := make(map[library.Sha256]Problem)
 	for key, val := range currentState.data {
 		m[key] = val
 	}
 	return m
 }
 
-func (s *db) upsert(key library.RocketID, val Problem) {
+func (s *db) upsert(key library.Sha256, val Problem) {
 	val.UID = key
 	s.data[key] = val
 }

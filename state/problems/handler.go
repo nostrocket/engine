@@ -20,6 +20,35 @@ func HandleEvent(event nostr.Event) (m Mapped, e error) {
 		switch event.Kind {
 		case 641800:
 			return handle641800(event)
+		case 641802:
+			return handle641802(event)
+		}
+	}
+	return nil, fmt.Errorf("no state changed")
+}
+
+func handle641802(event nostr.Event) (m Mapped, e error) {
+	var updates int64 = 0
+	if anchor, ok := library.GetReply(event); ok {
+		if identity.IsUSH(event.PubKey) {
+			if currentProblem, problemExists := currentState.data[anchor]; problemExists {
+				if currentProblem.CreatedBy == event.PubKey || identity.IsMaintainer(event.PubKey) {
+					if len(event.Content) > 0 && event.Content != currentProblem.Body {
+						currentProblem.Body = event.Content
+						updates++
+					}
+					if title, ok := library.GetFirstTag(event, "title"); ok {
+						if currentProblem.Title != title && len(title) > 0 {
+							currentProblem.Title = title
+							updates++
+						}
+					}
+					if updates > 0 {
+						currentState.upsert(currentProblem.UID, currentProblem)
+						return getMap(), nil
+					}
+				}
+			}
 		}
 	}
 	return nil, fmt.Errorf("no state changed")

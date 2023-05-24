@@ -37,6 +37,9 @@ func HandleConsensusEvent(e nostr.Event, scEvent chan library.Sha256, scResult c
 	if len(unmarshalled.StateChangeEventID) != 64 {
 		return fmt.Errorf("invalid state change event ID")
 	}
+	//if unmarshalled.StateChangeEventID == "3fd2242a22d2c84c02196013ffa62c37ef7edeea421ba09e79c199b8d3a9fd55" {
+	//	cPublish <- deleteEvent(e.ID)
+	//}
 	currentState.mutex.Lock()
 	defer currentState.mutex.Unlock()
 	return handleNewConsensusEvent(unmarshalled, e, scEvent, scResult, cPublish, localEvent)
