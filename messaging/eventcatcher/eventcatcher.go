@@ -2,6 +2,8 @@ package eventcatcher
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/nbd-wtf/go-nostr"
 	"nostrocket/engine/actors"
@@ -32,6 +34,9 @@ func SubscribeToTree(eChan chan nostr.Event, sendChan chan nostr.Event, eose cha
 		for {
 			select {
 			case e := <-sendChan:
+				if e.Kind == 21069 {
+					fmt.Println("SENDING KEEPALIVE EVENT")
+				}
 				_, err := relay.Publish(context.Background(), e)
 				if err != nil {
 					library.LogCLI(err.Error(), 2)
@@ -43,22 +48,26 @@ func SubscribeToTree(eChan chan nostr.Event, sendChan chan nostr.Event, eose cha
 	go func() {
 		<-sub.EndOfStoredEvents
 		eose <- true
-		// handle end of stored events (EOSE, see NIP-15)
-		//todo process consensustree here, and begin storing new events in a separate place so we can play them after catchup if we have votepower
-		//subscribe to kind 640064
 	}()
+	lastEventTime := time.Now()
 L:
 	for {
 		select {
 		case ev := <-sub.Events:
 			if ev.Kind == 640064 {
 			}
+			if ev.Kind == 21069 {
+				fmt.Println("GOT KEEPALIVE EVENT")
+			}
 			if ev == nil {
+				library.LogCLI("Terminating connection to relay", 3)
+				cancel()
 				library.LogCLI("Restarting Eventcatcher", 4)
 				go SubscribeToTree(eChan, sendChan, eose)
 				break L
 			} else {
 				go func() {
+					lastEventTime = time.Now()
 					if ev.Kind >= 640000 && ev.Kind <= 649999 {
 						if ok, _ := ev.CheckSignature(); ok {
 							eChan <- *ev
@@ -66,6 +75,26 @@ L:
 					}
 				}()
 			}
+		case <-time.After(time.Minute):
+			if time.Since(lastEventTime) > time.Duration(time.Minute*2) {
+				library.LogCLI("Terminating connection to relay", 3)
+				cancel()
+				library.LogCLI("Restarting Eventcatcher", 4)
+				go SubscribeToTree(eChan, sendChan, eose)
+				break L
+			}
+			var t = nostr.Tags{}
+			t = append(t, nostr.Tag{"e", actors.IgnitionEvent, "", "root"})
+			keepAlive := nostr.Event{
+				PubKey:    actors.MyWallet().Account,
+				CreatedAt: time.Now(),
+				Kind:      21069,
+				Tags:      t,
+			}
+
+			keepAlive.ID = keepAlive.GetID()
+			keepAlive.Sign(actors.MyWallet().PrivateKey)
+			sendChan <- keepAlive
 		case <-actors.GetTerminateChan():
 			break L
 		}

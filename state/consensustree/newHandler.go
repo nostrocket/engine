@@ -10,6 +10,7 @@ import (
 
 	"github.com/nbd-wtf/go-nostr"
 	"nostrocket/engine/actors"
+	"nostrocket/engine/helpers"
 	"nostrocket/engine/library"
 	"nostrocket/state/shares"
 )
@@ -24,7 +25,7 @@ var debug = false
 //publish: caller should publish (to relays) events received on this channel
 func HandleConsensusEvent(e nostr.Event, scEvent chan library.Sha256, scResult chan bool, cPublish chan nostr.Event, localEvent bool) error {
 	if debug {
-		cPublish <- deleteEvent(e.ID)
+		cPublish <- helpers.DeleteEvent(e.ID, "woops")
 		num++
 		println(num)
 		return nil
@@ -54,21 +55,17 @@ func handleNewConsensusEvent(unmarshalled Kind640064, e nostr.Event, scEvent cha
 	if c, ok := getCheckpoint(unmarshalled.Height); ok {
 		if c.StateChangeEventID != unmarshalled.StateChangeEventID {
 			if e.PubKey == actors.MyWallet().Account {
-				cPublish <- deleteEvent(e.ID)
+				cPublish <- helpers.DeleteEvent(e.ID, "invalid checkpoint detected")
 				library.LogCLI(fmt.Sprintf("attempting to delete consensus event created %f seconds ago", time.Since(e.CreatedAt).Seconds()), 2)
 			}
 			return fmt.Errorf("trying to parse %s at height %d, but we already have a checkpoint for %s at height %d", unmarshalled.StateChangeEventID, unmarshalled.Height, c.StateChangeEventID, c.StateChangeEventHeight)
 		}
 	}
-	//if e.PubKey == actors.MyWallet().Account {
-	//	fmt.Println(59)
-	//}
 	var current map[library.Sha256]TreeEvent
 	var exists bool
 	current, exists = currentState.data[unmarshalled.Height]
 	if !exists {
 		current = make(map[library.Sha256]TreeEvent)
-		//currentState.data[unmarshalled.Height] = current
 	}
 	currentInner, cIexists := current[unmarshalled.StateChangeEventID]
 	if !cIexists {
@@ -86,11 +83,36 @@ func handleNewConsensusEvent(unmarshalled Kind640064, e nostr.Event, scEvent cha
 			BitcoinHeight:           0,
 		}
 	}
-	if e.PubKey == actors.MyWallet().Account && currentInner.StateChangeEventHandled && currentInner.IHaveSigned && !localEvent {
-		fmt.Println(time.Now().Unix() - e.CreatedAt.Unix())
-		cPublish <- deleteEvent(e.ID)
-		return nil
+	if e.PubKey == actors.MyWallet().Account && currentInner.StateChangeEventHandled && currentInner.IHaveSigned { //&& !localEvent
+		timestamp := time.Now().Unix()
+		var del []library.Sha256
+		for _, event := range currentInner.ConsensusEvents {
+			if event.PubKey == actors.MyWallet().Account {
+				if event.CreatedAt.Unix() <= timestamp {
+					timestamp = event.CreatedAt.Unix()
+				}
+			}
+		}
+		for _, event := range currentInner.ConsensusEvents {
+			if event.PubKey == actors.MyWallet().Account {
+				if event.CreatedAt.Unix() > timestamp {
+					del = append(del, event.ID)
+
+				}
+			}
+		}
+		var err error = nil
+		for _, sha256 := range del {
+			cPublish <- helpers.DeleteEvent(sha256, "duplicate consensus event")
+			if sha256 == e.ID {
+				err = fmt.Errorf("surplus consensus event detected")
+			}
+		}
+		if err != nil {
+			return err
+		}
 	}
+
 	if !checkTags(e) && !currentInner.StateChangeEventHandled {
 		events[e.ID] = e
 		return nil
@@ -198,25 +220,10 @@ func deleteDuplicateConsensusEvents() (r []nostr.Event) {
 				return ourConsensusEvents[i].CreatedAt.Unix() < ourConsensusEvents[j].CreatedAt.Unix()
 			})
 			for k := len(ourConsensusEvents); k > 1; k-- {
-				r = append(r, deleteEvent(ourConsensusEvents[k-1].ID))
+				r = append(r, helpers.DeleteEvent(ourConsensusEvents[k-1].ID, "duplicatae consensus event"))
 			}
 		}
 	}
-	return
-}
-
-func deleteEvent(id library.Sha256) (r nostr.Event) {
-	r = nostr.Event{
-		PubKey:    actors.MyWallet().Account,
-		CreatedAt: time.Now(),
-		Kind:      5,
-		Tags: nostr.Tags{nostr.Tag{
-			"e", id},
-		},
-		Content: "woops",
-	}
-	r.ID = r.GetID()
-	r.Sign(actors.MyWallet().PrivateKey)
 	return
 }
 
