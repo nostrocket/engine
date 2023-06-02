@@ -65,3 +65,12 @@ func (s *db) upsert(key library.Sha256, val Problem) {
 	val.UID = key
 	s.data[key] = val
 }
+
+func hasOpenChildren(problemID library.Sha256) bool {
+	for _, problem := range getMap() {
+		if problem.Parent == problemID {
+			return true
+		}
+	}
+	return false
+}
