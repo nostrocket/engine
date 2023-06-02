@@ -77,8 +77,10 @@ L:
 			}
 		case <-time.After(time.Minute):
 			if time.Since(lastEventTime) > time.Duration(time.Minute*2) {
-				library.LogCLI("Terminating connection to relay", 3)
-				cancel()
+				go func() {
+					library.LogCLI("Terminating connection to relay", 3)
+					cancel()
+				}()
 				library.LogCLI("Restarting Eventcatcher", 4)
 				go SubscribeToTree(eChan, sendChan, eose)
 				break L
