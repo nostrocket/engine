@@ -43,7 +43,9 @@ func handleMetadata(event nostr.Event) (m Mapped, e error) {
 						}
 					}
 					if claim == "abandon" {
-						if currentProblem.ClaimedBy == event.PubKey || identity.IsMaintainer(event.PubKey) {
+						if currentProblem.ClaimedBy == event.PubKey ||
+							identity.IsMaintainer(event.PubKey) &&
+								len(currentProblem.ClaimedBy) == 64 {
 							currentProblem.ClaimedBy = ""
 							currentProblem.ClaimedAt = 0
 							updates++
