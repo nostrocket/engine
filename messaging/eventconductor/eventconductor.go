@@ -42,6 +42,8 @@ var publishChan = make(chan nostr.Event)
 
 func Publish(event nostr.Event) {
 	go func() {
+		sane := library.ValidateSaneExecutionTime()
+		defer sane()
 		publishChan <- event
 		//fmt.Printf("\n48\n%#v\n", event)
 	}()
@@ -70,15 +72,16 @@ func handleEvents() {
 			case <-eoseChan:
 				eose = true
 			case event := <-eventChan:
-				addEventToCache(event)
-				if event.Kind == 640064 && !eventIsInState(event.ID) {
-					//fmt.Printf("\nconsensus event from relay:\n%#v\n", event)
-					err := handleConsensusEvent(event)
-					if err != nil {
-						library.LogCLI(err.Error(), 2)
+				if !addEventToCache(event) {
+					if event.Kind == 640064 && !eventIsInState(event.ID) {
+						//fmt.Printf("\nconsensus event from relay:\n%#v\n", event)
+						err := handleConsensusEvent(event)
+						if err != nil {
+							library.LogCLI(err.Error(), 2)
+						}
+					} else {
+						stack.Push(&event)
 					}
-				} else {
-					stack.Push(&event)
 				}
 			case <-time.After(timeToWaitBeforeHandlingNewStateChangeEvents):
 				if debug {
@@ -115,6 +118,8 @@ func handleEvents() {
 }
 
 func processStateChangeEventOutOfConsensus(event *nostr.Event) error {
+	sane := library.ValidateSaneExecutionTime()
+	defer sane()
 	err := handleEvent(*event, false)
 	if err == nil {
 		consensusEvent, err := consensustree.CreateNewConsensusEvent(*event)
@@ -134,6 +139,8 @@ func processStateChangeEventOutOfConsensus(event *nostr.Event) error {
 }
 
 func handleConsensusEvent(e nostr.Event) error {
+	sane := library.ValidateSaneExecutionTime()
+	defer sane()
 	toHandle := make(chan library.Sha256)
 	consensusEventsToPublish := make(chan nostr.Event)
 	var returnResult = make(chan bool)
@@ -169,12 +176,14 @@ var eventCache = make(map[library.Sha256]nostr.Event)
 var eventCacheMu = &deadlock.Mutex{}
 var eventCacheWg = &deadlock.WaitGroup{}
 
-func addEventToCache(e nostr.Event) {
+func addEventToCache(e nostr.Event) bool {
 	eventCacheWg.Add(1)
 	eventCacheMu.Lock()
+	_, exists := eventCache[e.ID]
 	eventCache[e.ID] = e
 	eventCacheMu.Unlock()
 	eventCacheWg.Done()
+	return exists
 }
 
 func getEventFromCache(eventID library.Sha256) (nostr.Event, bool) {

@@ -37,10 +37,14 @@ func SubscribeToTree(eChan chan nostr.Event, sendChan chan nostr.Event, eose cha
 				if e.Kind == 21069 {
 					fmt.Println("SENDING KEEPALIVE EVENT")
 				}
-				_, err := relay.Publish(context.Background(), e)
-				if err != nil {
-					library.LogCLI(err.Error(), 2)
-				}
+				go func() {
+					sane := library.ValidateSaneExecutionTime()
+					_, err := relay.Publish(context.Background(), e)
+					if err != nil {
+						library.LogCLI(err.Error(), 2)
+					}
+					sane()
+				}()
 			}
 		}
 	}()
@@ -54,6 +58,7 @@ L:
 	for {
 		select {
 		case ev := <-sub.Events:
+			sane := library.ValidateSaneExecutionTime()
 			if ev.Kind == 640064 {
 			}
 			if ev.Kind == 21069 {
@@ -75,6 +80,7 @@ L:
 					}
 				}()
 			}
+			sane()
 		case <-time.After(time.Minute):
 			if time.Since(lastEventTime) > time.Duration(time.Minute*2) {
 				go func() {
