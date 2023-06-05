@@ -1,11 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/eiannone/keyboard"
 	"nostrocket/engine/actors"
+	"nostrocket/engine/library"
 	"nostrocket/messaging/eventconductor"
 	"nostrocket/state/consensustree"
 	"nostrocket/state/identity"
@@ -86,6 +88,14 @@ func cliListener(interrupt chan struct{}) {
 			for _, problem := range problems.GetMap() {
 				fmt.Printf("\nUID: %s\nPARENT: %s\nTITLE: %s\nBODY: %s\nCREATED BY: %s\n\n", problem.UID, problem.Parent, problem.Title, problem.Body, problem.CreatedBy)
 			}
+		case "f":
+			b, err := json.Marshal(actors.CurrentStateMap())
+			if err != nil {
+				library.LogCLI(err, 2)
+			} else {
+				eventconductor.Publish(actors.CurrentStateEventBuilder(fmt.Sprintf("%s", b)))
+			}
+
 		}
 	}
 }

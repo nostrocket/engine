@@ -55,9 +55,11 @@ func handleMetadata(event nostr.Event) (m Mapped, e error) {
 				if _close, ok := library.GetFirstTag(event, "close"); ok {
 					if currentProblem.CreatedBy == event.PubKey || identity.IsMaintainer(event.PubKey) {
 						if _close == "close" {
-							if !currentProblem.Closed {
-								currentProblem.Closed = true
-								updates++
+							if !hasOpenChildren(currentProblem.UID) {
+								if !currentProblem.Closed {
+									currentProblem.Closed = true
+									updates++
+								}
 							}
 						}
 						if _close == "open" {

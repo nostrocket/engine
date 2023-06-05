@@ -56,3 +56,9 @@ func CurrentStateEventBuilder(state string) nostr.Event {
 	e.Sign(MyWallet().PrivateKey)
 	return e
 }
+
+func CurrentStateMap() CurrentState {
+	currentState.mu.Lock()
+	defer currentState.mu.Unlock()
+	return currentState
+}
