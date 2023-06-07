@@ -65,11 +65,11 @@ func cliListener(interrupt chan struct{}) {
 				fmt.Printf("\nKey: %s; Value: %v\n", k, v)
 			}
 		case "C":
-			fmt.Println("ALL STATE CHANGE EVENTS IN ORDER THEY WERE HANDLED BY THIS ENGINE:")
-			for _, sha256 := range consensustree.GetAllStateChangeEventsInOrder() {
-				e := eventconductor.GetEventFromCache(sha256)
-				fmt.Printf("\nID: %s Kind: %d Signed By: %s\nTags: %#v\nContent: %s\n", e.ID, e.Kind, e.PubKey, e.Tags, e.Content)
-			}
+			//fmt.Println("ALL STATE CHANGE EVENTS IN ORDER THEY WERE HANDLED BY THIS ENGINE:")
+			//for _, sha256 := range consensustree.GetAllStateChangeEventsInOrder() {
+			//	e := eventconductor.GetEventFromCache(sha256)
+			//	fmt.Printf("\nID: %s Kind: %d Signed By: %s\nTags: %#v\nContent: %s\n", e.ID, e.Kind, e.PubKey, e.Tags, e.Content)
+			//}
 
 			fmt.Println("CHECKPOINTS")
 			for _, checkpoint := range consensustree.GetCheckpoints() {
@@ -78,11 +78,11 @@ func cliListener(interrupt chan struct{}) {
 			//fmt.Println("LATEST STATE CHANGE EVENT AND HEIGHT IN THE CONSENSUS TREE")
 			//fmt.Println(consensustree.GetLatestHandled())
 
-			for _, m := range consensustree.GetMap() {
-				for _, event := range m {
-					fmt.Printf("\n%#v\n", event)
-				}
-			}
+			//for _, m := range consensustree.GetMap() {
+			//	for _, event := range m {
+			//		fmt.Printf("\n%#v\n", event)
+			//	}
+			//}
 		case "p":
 			fmt.Println("-------- PROBLEMS ---------")
 			for _, problem := range problems.GetMap() {
