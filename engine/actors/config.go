@@ -8,22 +8,22 @@ import (
 )
 
 //Ignition
-const IgnitionEvent string = "fd459ea06157e30cfb87f7062ee3014bc143ecda072dd92ee6ea4315a6d2df1c"
-const IgnitionAccount library.Account = "b4f36e2a63792324a92f3b7d973fcc33eaa7720aaeee71729ac74d7ba7677675"
+const IgnitionEvent string = "1bf16cac62588cfd7e3c336b8548fa49a09627f03dbf06c7a4fee27bc01972c8"
+const IgnitionAccount library.Account = "546b4d7f86fe2c1fcc7eb10bf96c2eaef1daa26c67dad348ff0e9c853ffe8882"
 
 //Anchors for incoming event trees
-const StateChangeRequests string = "7a22f580d253c4142aa4e6b28d577b2d59fdd30083b0eb27ee76a9bd750bff26"
-const Identity string = "0a73208becd0b1a9d294e6caef14352047ab44b848930e6979937fe09effaf71"
-const Shares string = "7fd9810bdb8bc635633cc4e3d0888e395420aedc7d28778c100793d1d3bc09a6"
-const Mirvs string = "c7f87218e62f6d41fa2f5b2480210ed1d48b2609e03e9b4b500a3b64e3c08554"
-const Problems string = "77c3bf5382b62d16a70df8e2932a512e2fce72458ee47b73feaef8ae8b9bd62b"
+const StateChangeRequests string = "120205879a8d9a38adcb794f7cbff3872c4117a7bb7e86672484f6dee7d6b1c6"
+const Identity string = "320c1d0a15bd0d84c3527862ad02d558df3893dfbbc488dcf7530abec25d23bb"
+const Shares string = "083e612017800c276fbbeda8fe3a965daf63bb3030dd0535cfcd7d06afabb870"
+const Mirvs string = "0f56599b6530f1ed1c11745b76a0d0fc29934e9a90accce1521f4dfac7a78532"
+const Problems string = "edea7c22992a1001de805f690d6198fd365ec45e7e5444482100e22447c657a0" //77c3bf5382b62d16a70df8e2932a512e2fce72458ee47b73feaef8ae8b9bd62b
 
 //Anchors for outgoing event trees
-const CurrentStates string = "0255594820a3ddc5b603d4e37ba6b2325879aebec401b86f9d69f5fd3864c203"
+const CurrentStates string = "fc54dcb214e86ed3049aec2e26199b457866989da0d9acb2bf8313e023344052"
 
 //Anchors for bidirectional event trees
-const ReplayPrevention string = "24c30ad7f036ed49379b5d1209836d1ff6795adb34da2d3e4cabc47dc9dfef21"
-const ConsensusTree string = "e54a960017e7ed4d485e7de34312b0f583c0a1920a2ae60d054a0ff78894fd2f"
+const ReplayPrevention string = "e29992d4c7d272dfc274b8a68f735c76dd361a24cc08bdf2ed6fe8808485024c"
+const ConsensusTree string = "0e4eb74ff5031663115958e66ba1538cd4eadaf91f6599c0b0795e6b4c7bc9af"
 
 // InitConfig sets up our Viper config object
 func InitConfig(config *viper.Viper) {

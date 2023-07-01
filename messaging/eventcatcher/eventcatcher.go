@@ -2,7 +2,6 @@ package eventcatcher
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/nbd-wtf/go-nostr"
@@ -35,7 +34,7 @@ func SubscribeToTree(eChan chan nostr.Event, sendChan chan nostr.Event, eose cha
 			select {
 			case e := <-sendChan:
 				if e.Kind == 21069 {
-					fmt.Println("SENDING KEEPALIVE EVENT")
+					//fmt.Println("SENDING KEEPALIVE EVENT")
 				}
 				go func() {
 					sane := library.ValidateSaneExecutionTime()
@@ -44,6 +43,7 @@ func SubscribeToTree(eChan chan nostr.Event, sendChan chan nostr.Event, eose cha
 						library.LogCLI(err.Error(), 2)
 					}
 					sane()
+					//library.LogCLI("Event "+e.ID+" publish status: "+status.String(), 4)
 				}()
 			}
 		}
@@ -58,11 +58,12 @@ L:
 	for {
 		select {
 		case ev := <-sub.Events:
+			//fmt.Println(ev.ID)
 			sane := library.ValidateSaneExecutionTime()
 			if ev.Kind == 640064 {
 			}
 			if ev.Kind == 21069 {
-				fmt.Println("GOT KEEPALIVE EVENT")
+				//fmt.Println("GOT KEEPALIVE EVENT")
 			}
 			if ev == nil {
 				library.LogCLI("Terminating connection to relay", 3)

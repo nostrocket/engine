@@ -89,7 +89,15 @@ func cliListener(interrupt chan struct{}) {
 				fmt.Printf("\nUID: %s\nPARENT: %s\nTITLE: %s\nBODY: %s\nCREATED BY: %s\n\n", problem.UID, problem.Parent, problem.Title, problem.Body, problem.CreatedBy)
 			}
 		case "f":
-			b, err := json.Marshal(actors.CurrentStateMap())
+			currentState := actors.CurrentStateMap()
+			if currentState.Identity == nil {
+				currentState.Identity = identity.GetMap()
+			}
+			if currentState.Replay == nil {
+				currentState.Replay = replay.GetMap()
+			}
+			fmt.Printf("\n%#v\n", currentState)
+			b, err := json.Marshal(currentState)
 			if err != nil {
 				library.LogCLI(err, 2)
 			} else {

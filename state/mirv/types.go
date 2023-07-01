@@ -14,7 +14,6 @@ type Rocket struct {
 type Mapped map[library.RocketID]Rocket
 
 //Kind640600 STATUS:DRAFT
-//Used for Identity.Name Identity.About
 type Kind640600 struct {
 	RocketID library.RocketID `json:"rocket_id" status:"draft"`
 	Problem  library.Sha256   `json:"problem_id" status:"draft"`

@@ -112,8 +112,8 @@ func handleNewAnchor(event nostr.Event) (m Mapped, e error) {
 	//var updates int64 = 0
 	if parent, ok := library.GetReply(event); ok {
 		//exception for ignition problem
-		if len(currentState.data) == 0 && event.PubKey == actors.IgnitionAccount && parent == actors.StateChangeRequests {
-			return insertProblem(event, actors.StateChangeRequests)
+		if len(currentState.data) == 0 && event.PubKey == actors.IgnitionAccount && parent == actors.Problems {
+			return insertProblem(event, actors.Problems)
 		} else {
 			if _, exists := currentState.data[event.ID]; !exists {
 				if identity.IsUSH(event.PubKey) {

@@ -32,6 +32,7 @@ func Start() {
 	eventsInState[actors.Identity] = nostr.Event{}
 	eventsInState[actors.Shares] = nostr.Event{}
 	eventsInState[actors.Mirvs] = nostr.Event{}
+	eventsInState[actors.Problems] = nostr.Event{}
 	eventsInStateLock.Unlock()
 	go handleEvents()
 }
@@ -72,6 +73,7 @@ func handleEvents() {
 			case <-eoseChan:
 				eose = true
 			case event := <-eventChan:
+				//fmt.Println(event.ID)
 				if !addEventToCache(event) {
 					if event.Kind == 640064 && !eventIsInState(event.ID) {
 						//fmt.Printf("\nconsensus event from relay:\n%#v\n", event)
@@ -268,7 +270,10 @@ func handleEvent(e nostr.Event, fromConsensusEvent bool) error {
 				//publish our current state
 				//todo only publish if we are at the current bitcoin tip
 				if !fromConsensusEvent {
-					Publish(actors.CurrentStateEventBuilder(fmt.Sprintf("%s", b)))
+					stateEvent := actors.CurrentStateEventBuilder(fmt.Sprintf("%s", b))
+					Publish(stateEvent)
+					library.LogCLI(fmt.Sprintf("Published current state in event %s", stateEvent.ID), 4)
+					time.Sleep(time.Second)
 				}
 				return nil
 			}
