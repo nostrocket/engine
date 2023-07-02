@@ -3,6 +3,7 @@ package eventconductor
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/nbd-wtf/go-nostr"
@@ -79,7 +80,7 @@ func handleEvents() {
 						//fmt.Printf("\nconsensus event from relay:\n%#v\n", event)
 						err := handleConsensusEvent(event)
 						if err != nil {
-							library.LogCLI(err.Error(), 2)
+							library.LogCLI(err.Error(), 0)
 						}
 					} else {
 						stack.Push(&event)
@@ -321,6 +322,23 @@ func routeEvent(e nostr.Event) (mindName string, newState any, err error) {
 		newState, err = problems.HandleEvent(e)
 	case k == 640064:
 		fmt.Printf("\n640064\n%#v\n", e)
+	case k == 1:
+		mindName = ""
+		newState = nil
+		err = fmt.Errorf("unhandled kind 1")
+		if operation, ok := library.GetFirstTag(e, "op"); ok {
+			ops := strings.Split(operation, ".")
+			if len(ops) > 2 {
+				if ops[0] == "nostrocket" {
+					switch o := ops[1]; {
+					case o == "problem":
+						mindName = "problems"
+						newState, err = problems.HandleEvent(e)
+					}
+				}
+			}
+
+		}
 	}
 	return
 }

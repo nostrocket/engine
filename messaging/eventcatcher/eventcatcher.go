@@ -74,7 +74,7 @@ L:
 			} else {
 				go func() {
 					lastEventTime = time.Now()
-					if ev.Kind >= 640000 && ev.Kind <= 649999 {
+					if ev.Kind != 21069 { //ev.Kind >= 640000 && ev.Kind <= 649999 {
 						if ok, _ := ev.CheckSignature(); ok {
 							eChan <- *ev
 						}

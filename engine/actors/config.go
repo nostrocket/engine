@@ -17,6 +17,7 @@ const Identity string = "320c1d0a15bd0d84c3527862ad02d558df3893dfbbc488dcf7530ab
 const Shares string = "083e612017800c276fbbeda8fe3a965daf63bb3030dd0535cfcd7d06afabb870"
 const Mirvs string = "0f56599b6530f1ed1c11745b76a0d0fc29934e9a90accce1521f4dfac7a78532"
 const Problems string = "edea7c22992a1001de805f690d6198fd365ec45e7e5444482100e22447c657a0" //77c3bf5382b62d16a70df8e2932a512e2fce72458ee47b73feaef8ae8b9bd62b
+const Problems1 string = "cefd4ffb2f069f68f11729d9e37739a940b25d28d411e2b76ef11fb7c24b3660"
 
 //Anchors for outgoing event trees
 const CurrentStates string = "fc54dcb214e86ed3049aec2e26199b457866989da0d9acb2bf8313e023344052"

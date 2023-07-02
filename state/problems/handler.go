@@ -2,6 +2,7 @@ package problems
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/nbd-wtf/go-nostr"
 	"nostrocket/engine/actors"
@@ -14,19 +15,66 @@ func HandleEvent(event nostr.Event) (m Mapped, e error) {
 	if sig, _ := event.CheckSignature(); !sig {
 		return
 	}
-	if event.Kind >= 641800 && event.Kind <= 641899 {
-		currentState.mutex.Lock()
-		defer currentState.mutex.Unlock()
-		switch event.Kind {
-		case 641800:
-			return handleNewAnchor(event)
-		case 641802:
-			return handleContent(event)
-		case 641804:
-			return handleMetadata(event)
-		}
+	currentState.mutex.Lock()
+	defer currentState.mutex.Unlock()
+	switch event.Kind {
+	case 641800:
+		return handleNewAnchor(event)
+	case 641802:
+		return handleContent(event)
+	case 641804:
+		return handleMetadata(event)
+	case 1:
+		return handleByTags(event)
 	}
 	return nil, fmt.Errorf("no state changed")
+}
+
+func handleByTags(event nostr.Event) (m Mapped, e error) {
+	if operation, ok := library.GetFirstTag(event, "op"); ok {
+		ops := strings.Split(operation, ".")
+		if len(ops) > 2 {
+			if ops[1] == "problem" {
+				switch o := ops[2]; {
+				case o == "create":
+					return handleCreationEvent(event)
+				case o == "modify":
+					return handleModificationEvent(event)
+				}
+			}
+		}
+	}
+	return nil, fmt.Errorf("no valid operation found 543c2345")
+}
+
+func handleModificationEvent(event nostr.Event) (m Mapped, e error) {
+	if operation, ok := library.GetFirstTag(event, "op"); ok {
+		ops := strings.Split(operation, ".")
+		if len(ops) > 3 {
+			if ops[2] == "modify" {
+				switch o := ops[3]; {
+				case o == "description":
+					return handleContent(event)
+				}
+			}
+		}
+	}
+	return nil, fmt.Errorf("no valid operation found 56567")
+}
+
+func handleCreationEvent(event nostr.Event) (m Mapped, e error) {
+	if operation, ok := library.GetFirstTag(event, "op"); ok {
+		ops := strings.Split(operation, ".")
+		if len(ops) > 3 {
+			if ops[2] == "create" {
+				switch o := ops[3]; {
+				case o == "anchor":
+					return handleNewAnchor(event)
+				}
+			}
+		}
+	}
+	return nil, fmt.Errorf("no valid operation found 3425345")
 }
 
 func handleMetadata(event nostr.Event) (m Mapped, e error) {
@@ -114,14 +162,17 @@ func handleNewAnchor(event nostr.Event) (m Mapped, e error) {
 		//exception for ignition problem
 		if len(currentState.data) == 0 && event.PubKey == actors.IgnitionAccount && parent == actors.Problems {
 			return insertProblem(event, actors.Problems)
-		} else {
-			if _, exists := currentState.data[event.ID]; !exists {
-				if identity.IsUSH(event.PubKey) {
-					if parentProblem, parentExists := currentState.data[parent]; parentExists {
-						if !parentProblem.Closed {
-							if len(parentProblem.ClaimedBy) == 0 || parentProblem.ClaimedBy == event.PubKey {
-								return insertProblem(event, parent)
-							}
+		}
+		//exception for refactor to kind 1
+		if event.PubKey == actors.IgnitionAccount && parent == actors.Problems1 {
+			return insertProblem(event, actors.Problems1)
+		}
+		if _, exists := currentState.data[event.ID]; !exists {
+			if identity.IsUSH(event.PubKey) {
+				if parentProblem, parentExists := currentState.data[parent]; parentExists {
+					if !parentProblem.Closed {
+						if len(parentProblem.ClaimedBy) == 0 || parentProblem.ClaimedBy == event.PubKey {
+							return insertProblem(event, parent)
 						}
 					}
 				}
