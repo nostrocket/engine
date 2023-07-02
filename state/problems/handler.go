@@ -39,7 +39,7 @@ func handleByTags(event nostr.Event) (m Mapped, e error) {
 				case o == "create":
 					return handleCreationEvent(event)
 				case o == "modify":
-					return handleModificationEvent(event)
+					return handleContent(event)
 				}
 			}
 		}
@@ -134,9 +134,15 @@ func handleContent(event nostr.Event) (m Mapped, e error) {
 		if identity.IsUSH(event.PubKey) {
 			if currentProblem, problemExists := currentState.data[anchor]; problemExists {
 				if currentProblem.CreatedBy == event.PubKey || identity.IsMaintainer(event.PubKey) {
-					if len(event.Content) > 0 && event.Content != currentProblem.Body {
+					if len(event.Content) > 0 && event.Content != currentProblem.Body && event.Kind == 641802 {
 						currentProblem.Body = event.Content
 						updates++
+					}
+					if description, ok := library.GetFirstTag(event, "description"); ok {
+						if currentProblem.Body != description && len(description) > 0 {
+							currentProblem.Body = description
+							updates++
+						}
 					}
 					if title, ok := library.GetFirstTag(event, "title"); ok {
 						if currentProblem.Title != title && len(title) > 0 {
