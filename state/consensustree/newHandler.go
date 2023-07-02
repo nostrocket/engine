@@ -38,7 +38,7 @@ func HandleConsensusEvent(e nostr.Event, scEvent chan library.Sha256, scResult c
 	if len(unmarshalled.StateChangeEventID) != 64 {
 		return fmt.Errorf("invalid state change event ID")
 	}
-	//if unmarshalled.StateChangeEventID == "e1c4a4a4268d185532f462c4751dc648602ff17d12bc132b78508cfac252c3aa" {
+	//if unmarshalled.StateChangeEventID == "2e11fb3322c7fb084e82622ddc1bc59c0c28565c3f8a816c13682745741a9f9e" {
 	//	cPublish <- helpers.DeleteEvent(e.ID, "invalid state change event")
 	//	return nil
 	//}

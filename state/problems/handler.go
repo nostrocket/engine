@@ -37,7 +37,8 @@ func handleByTags(event nostr.Event) (m Mapped, e error) {
 			if ops[1] == "problem" {
 				switch o := ops[2]; {
 				case o == "create":
-					return handleCreationEvent(event)
+					return handleNewAnchor(event)
+					//return handleCreationEvent(event)
 				case o == "modify":
 					return handleContent(event)
 				}
@@ -45,21 +46,6 @@ func handleByTags(event nostr.Event) (m Mapped, e error) {
 		}
 	}
 	return nil, fmt.Errorf("no valid operation found 543c2345")
-}
-
-func handleModificationEvent(event nostr.Event) (m Mapped, e error) {
-	if operation, ok := library.GetFirstTag(event, "op"); ok {
-		ops := strings.Split(operation, ".")
-		if len(ops) > 3 {
-			if ops[2] == "modify" {
-				switch o := ops[3]; {
-				case o == "description":
-					return handleContent(event)
-				}
-			}
-		}
-	}
-	return nil, fmt.Errorf("no valid operation found 56567")
 }
 
 func handleCreationEvent(event nostr.Event) (m Mapped, e error) {
@@ -167,18 +153,19 @@ func handleNewAnchor(event nostr.Event) (m Mapped, e error) {
 	if parent, ok := library.GetReply(event); ok {
 		//exception for ignition problem
 		if len(currentState.data) == 0 && event.PubKey == actors.IgnitionAccount && parent == actors.Problems {
-			return insertProblem(event, actors.Problems)
+			return insertProblemAnchor(event, actors.Problems)
 		}
 		//exception for refactor to kind 1
 		if event.PubKey == actors.IgnitionAccount && parent == actors.Problems1 {
-			return insertProblem(event, actors.Problems1)
+			currentState.data = make(map[library.Sha256]Problem)
+			return insertProblemAnchor(event, actors.Problems1)
 		}
 		if _, exists := currentState.data[event.ID]; !exists {
 			if identity.IsUSH(event.PubKey) {
 				if parentProblem, parentExists := currentState.data[parent]; parentExists {
 					if !parentProblem.Closed {
 						if len(parentProblem.ClaimedBy) == 0 || parentProblem.ClaimedBy == event.PubKey {
-							return insertProblem(event, parent)
+							return insertProblemAnchor(event, parent)
 						}
 					}
 				}
@@ -188,12 +175,29 @@ func handleNewAnchor(event nostr.Event) (m Mapped, e error) {
 	return nil, fmt.Errorf("no state changed")
 }
 
-func insertProblem(event nostr.Event, parent library.Sha256) (m Mapped, e error) {
+func insertProblemAnchor(event nostr.Event, parent library.Sha256) (m Mapped, e error) {
+	var title string
+	var description string
+	if d, ok := library.GetFirstTag(event, "description"); ok {
+		if len(d) > 0 {
+			description = d
+		}
+	}
+	if t, ok := library.GetFirstTag(event, "title"); ok {
+		if len(t) > 0 {
+			title = t
+		}
+	}
+
+	if len(title) == 0 && len(event.Content) <= 100 {
+		title = event.Content
+	}
+
 	p := Problem{
 		UID:       event.ID,
 		Parent:    parent,
-		Title:     event.Content,
-		Body:      "",
+		Title:     title,
+		Body:      description,
 		Closed:    false,
 		ClaimedAt: 0,
 		ClaimedBy: "",
