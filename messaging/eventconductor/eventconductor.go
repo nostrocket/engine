@@ -334,6 +334,9 @@ func routeEvent(e nostr.Event) (mindName string, newState any, err error) {
 					case o == "problem":
 						mindName = "problems"
 						newState, err = problems.HandleEvent(e)
+					case o == "identity":
+						mindName = "identity"
+						newState, err = identity.HandleEvent(e)
 					}
 				}
 			}

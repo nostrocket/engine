@@ -9,14 +9,13 @@ type Mapped map[library.Account]Identity
 type Identity struct {
 	Account               library.Account
 	Name                  string
-	About                 string
-	Picture               []byte
 	UniqueSovereignBy     library.Account // the account that has validated this account is a real human and doesn't already have an account (identity chain)
 	CharacterVouchedForBy map[library.Account]struct{}
 	MaintainerBy          library.Account // the maintainer who has made this account a maintainer (maintainer chain)
 	Pubkeys               []string
 	OpReturnAddr          [][]string
 	Order                 int64
+	PermanymEventID       library.Sha256
 }
 
 type Kind0 struct {
@@ -28,13 +27,6 @@ type Kind0 struct {
 //Evolution of public contracts: we can experiment behind this API by keeping Kind640400 (a Nostr Kind that is hereby
 //defined by it's JSON unmarshalling struct) and adding new things like DisplayName or KittenNames. Any new things
 //MUST be optional once this progresses past DRAFT status, if we need to add mandatory items under this Kind we need a new Kind.
-
-//Kind640400 STATUS:DRAFT
-//Used for Identity.Name Identity.About
-type Kind640400 struct {
-	Name  string `json:"name" status:"draft"`
-	About string `json:"about"`
-}
 
 //Kind640402 STATUS:DRAFT
 //Used for adding Participants to the USH and Maintainer tree.

@@ -48,7 +48,7 @@ func CurrentStateEventBuilder(state string) nostr.Event {
 	e := nostr.Event{
 		PubKey:    MyWallet().Account,
 		CreatedAt: time.Now(),
-		Kind:      10310,
+		Kind:      10311,
 		Tags:      nostr.Tags{nostr.Tag{"e", CurrentStates, "", "reply"}, nostr.Tag{"e", IgnitionEvent, "", "root"}},
 		Content:   state,
 	}

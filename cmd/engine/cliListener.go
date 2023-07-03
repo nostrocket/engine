@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/eiannone/keyboard"
 	"nostrocket/engine/actors"
@@ -65,16 +64,17 @@ func cliListener(interrupt chan struct{}) {
 				fmt.Printf("\nKey: %s; Value: %v\n", k, v)
 			}
 		case "C":
-			//fmt.Println("ALL STATE CHANGE EVENTS IN ORDER THEY WERE HANDLED BY THIS ENGINE:")
-			//for _, sha256 := range consensustree.GetAllStateChangeEventsInOrder() {
-			//	e := eventconductor.GetEventFromCache(sha256)
-			//	fmt.Printf("\nID: %s Kind: %d Signed By: %s\nTags: %#v\nContent: %s\n", e.ID, e.Kind, e.PubKey, e.Tags, e.Content)
+			fmt.Println("ALL STATE CHANGE EVENTS IN ORDER THEY WERE HANDLED BY THIS ENGINE:")
+			for i, sha256 := range consensustree.GetAllStateChangeEventsInOrder() {
+				e := eventconductor.GetEventFromCache(sha256)
+				fmt.Printf("\n%d\nID: %s Kind: %d Signed By: %s\nTags: %#v\nContent: %s\n\n", i, e.ID, e.Kind, e.PubKey, e.Tags, e.Content)
+			}
+
+			//fmt.Println("CHECKPOINTS")
+			//for _, checkpoint := range consensustree.GetCheckpoints() {
+			//	fmt.Printf("\nHeight: %d EventID: %s\nWitnessed At: %s\n", checkpoint.StateChangeEventHeight, checkpoint.StateChangeEventID, time.Unix(checkpoint.CreatedAt, 0).String())
 			//}
 
-			fmt.Println("CHECKPOINTS")
-			for _, checkpoint := range consensustree.GetCheckpoints() {
-				fmt.Printf("\nHeight: %d EventID: %s\nWitnessed At: %s\n", checkpoint.StateChangeEventHeight, checkpoint.StateChangeEventID, time.Unix(checkpoint.CreatedAt, 0).String())
-			}
 			//fmt.Println("LATEST STATE CHANGE EVENT AND HEIGHT IN THE CONSENSUS TREE")
 			//fmt.Println(consensustree.GetLatestHandled())
 

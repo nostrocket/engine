@@ -25,3 +25,12 @@ func GetReply(e nostr.Event) (string, bool) {
 	}
 	return "", false
 }
+
+func GetOpData(e nostr.Event) (string, bool) {
+	for _, tag := range e.Tags {
+		if tag.StartsWith([]string{"op"}) {
+			return tag[len(tag)-1], true
+		}
+	}
+	return "", false
+}
