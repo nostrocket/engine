@@ -44,7 +44,7 @@ func main() {
 	actors.MakeOrGetConfig().Set("firstRun", false)
 	err := actors.MakeOrGetConfig().WriteConfig()
 	if err != nil {
-		library.LogCLI(err.Error(), 3)
+		actors.LogCLI(err.Error(), 3)
 	}
 	wg.Wait()
 	//todo use waitgroup

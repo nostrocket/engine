@@ -48,7 +48,7 @@ func startDb() {
 		go start(ready)
 		// when the database has started, the goroutine will close the `ready` channel.
 		<-ready //This channel listener blocks until closed by `startDb`.
-		library.LogCLI("Shares Mind has started", 4)
+		actors.LogCLI("Shares Mind has started", 4)
 	}
 }
 
@@ -58,13 +58,13 @@ func start(ready chan struct{}) {
 	k640208 := Kind640208{RocketID: "nostrocket"}
 	j, err := json.Marshal(k640208)
 	if err != nil {
-		library.LogCLI(err.Error(), 0)
+		actors.LogCLI(err.Error(), 0)
 	}
 	if _, err := handle640208(nostr.Event{
 		PubKey:  actors.IgnitionAccount,
 		Content: fmt.Sprintf("%s", j),
 	}); err != nil {
-		library.LogCLI(err.Error(), 0)
+		actors.LogCLI(err.Error(), 0)
 	}
 	//}
 	if debug {
@@ -85,7 +85,7 @@ func start(ready chan struct{}) {
 	//	d.persistToDisk()
 	//}
 	actors.GetWaitGroup().Done()
-	library.LogCLI("Shares Mind has shut down", 4)
+	actors.LogCLI("Shares Mind has shut down", 4)
 }
 
 //func (s *db) restoreFromDisk(f *os.File) {
@@ -157,7 +157,7 @@ func TotalVotepower() (int64, error) {
 			total = total + (share.LeadTimeLockedShares * share.LeadTime)
 		}
 		if total > (9223372036854775807 / 5) {
-			library.LogCLI("we are 20% of the way to an overflow bug", 1)
+			actors.LogCLI("we are 20% of the way to an overflow bug", 1)
 		}
 		if total > (9223372036854775807 / 2) {
 			return 0, fmt.Errorf("we are 50%% of the way to an overflow bug")

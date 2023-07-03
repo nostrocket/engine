@@ -30,14 +30,14 @@ const ConsensusTree string = "30cd010a0e79769feb545ffae7820333069894105e063acb50
 func InitConfig(config *viper.Viper) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		library.LogCLI(err.Error(), 0)
+		LogCLI(err.Error(), 0)
 	}
 	config.SetDefault("rootDir", homeDir+"/nostrocket/")
 	config.SetConfigType("yaml")
 	config.SetConfigFile(config.GetString("rootDir") + "config.yaml")
 	err = config.ReadInConfig()
 	if err != nil {
-		library.LogCLI(err.Error(), 4)
+		LogCLI(err.Error(), 4)
 	}
 	config.SetDefault("firstRun", true)
 	config.SetDefault("flatFileDir", "data/")
@@ -57,7 +57,7 @@ func InitConfig(config *viper.Viper) {
 	library.Touch(config.GetString("rootDir") + "config.yaml")
 	err = config.WriteConfig()
 	if err != nil {
-		library.LogCLI(err.Error(), 0)
+		LogCLI(err.Error(), 0)
 	}
 }
 
@@ -66,7 +66,7 @@ func initRootDir(conf *viper.Viper) {
 	if os.IsNotExist(err) {
 		err = os.Mkdir(conf.GetString("rootDir"), 0755)
 		if err != nil {
-			library.LogCLI(err, 0)
+			LogCLI(err, 0)
 		}
 	}
 }

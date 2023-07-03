@@ -26,7 +26,7 @@ func SubscribeToTree(eChan chan nostr.Event, sendChan chan nostr.Event, eose cha
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	library.LogCLI("Connecting to "+relay.URL, 4)
+	actors.LogCLI("Connecting to "+relay.URL, 4)
 	sub := relay.Subscribe(ctx, filters)
 
 	go func() {
@@ -40,7 +40,7 @@ func SubscribeToTree(eChan chan nostr.Event, sendChan chan nostr.Event, eose cha
 					sane := library.ValidateSaneExecutionTime()
 					_, err := relay.Publish(context.Background(), e)
 					if err != nil {
-						library.LogCLI(err.Error(), 2)
+						actors.LogCLI(err.Error(), 2)
 					}
 					sane()
 					//library.LogCLI("Event "+e.ID+" publish status: "+status.String(), 4)
@@ -60,15 +60,15 @@ L:
 		case ev := <-sub.Events:
 			//fmt.Println(ev.ID)
 			sane := library.ValidateSaneExecutionTime()
-			if ev.Kind == 640064 {
+			if ev.Kind == 640001 {
 			}
 			if ev.Kind == 21069 {
 				//fmt.Println("GOT KEEPALIVE EVENT")
 			}
 			if ev == nil {
-				library.LogCLI("Terminating connection to relay", 3)
+				actors.LogCLI("Terminating connection to relay", 3)
 				cancel()
-				library.LogCLI("Restarting Eventcatcher", 4)
+				actors.LogCLI("Restarting Eventcatcher", 4)
 				go SubscribeToTree(eChan, sendChan, eose)
 				break L
 			} else {
@@ -85,10 +85,10 @@ L:
 		case <-time.After(time.Minute):
 			if time.Since(lastEventTime) > time.Duration(time.Minute*2) {
 				go func() {
-					library.LogCLI("Terminating connection to relay", 3)
+					actors.LogCLI("Terminating connection to relay", 3)
 					cancel()
 				}()
-				library.LogCLI("Restarting Eventcatcher", 4)
+				actors.LogCLI("Restarting Eventcatcher", 4)
 				go SubscribeToTree(eChan, sendChan, eose)
 				break L
 			}

@@ -13,7 +13,7 @@ func Sha256Sum(data interface{}) Sha256 {
 	case []byte:
 		b = d
 	default:
-		LogCLI("attempted to hash non-string or non-[]byte", 0)
+		//actors.LogCLI("attempted to hash non-string or non-[]byte", 0)
 	}
 	h := sha256.New()
 	h.Write(b)

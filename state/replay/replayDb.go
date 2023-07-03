@@ -37,7 +37,7 @@ func startDb() {
 		go start(ready)
 		// when the database has started, the goroutine will close the `ready` channel.
 		<-ready //This channel listener blocks until closed by `startDb`.
-		library.LogCLI("Replay Mind has started", 4)
+		actors.LogCLI("Replay Mind has started", 4)
 	}
 }
 
@@ -60,7 +60,7 @@ func start(ready chan struct{}) {
 	//actors.Write("replay", "current", b)
 	//currentState.persistToDisk()
 	actors.GetWaitGroup().Done()
-	library.LogCLI("Replay Mind has shut down", 4)
+	actors.LogCLI("Replay Mind has shut down", 4)
 }
 
 func (s *db) restoreFromDisk(f *os.File) {
@@ -68,13 +68,13 @@ func (s *db) restoreFromDisk(f *os.File) {
 	err := json.NewDecoder(f).Decode(&s.data)
 	if err != nil {
 		if err.Error() != "EOF" {
-			library.LogCLI(err.Error(), 0)
+			actors.LogCLI(err.Error(), 0)
 		}
 	}
 	s.mutex.Unlock()
 	err = f.Close()
 	if err != nil {
-		library.LogCLI(err.Error(), 0)
+		actors.LogCLI(err.Error(), 0)
 	}
 }
 
@@ -137,7 +137,7 @@ func GetStateHash() library.Sha256 {
 	for _, account := range sl {
 		decodedString, err := hex.DecodeString(m[account])
 		if err != nil {
-			library.LogCLI(err, 0)
+			actors.LogCLI(err, 0)
 		}
 		b.Write(decodedString)
 	}

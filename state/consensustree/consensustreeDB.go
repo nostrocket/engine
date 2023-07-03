@@ -34,7 +34,7 @@ func startDb() {
 		go start(ready)
 		// when the database has started, the goroutine will close the `ready` channel.
 		<-ready //This channel listener blocks until closed by `startDb`.
-		library.LogCLI("Consensus Tree Mind has started", 4)
+		actors.LogCLI("Consensus Tree Mind has started", 4)
 	}
 }
 
@@ -52,12 +52,12 @@ func start(ready chan struct{}) {
 	defer checkpoints.mutex.Unlock()
 	b, err := json.MarshalIndent(checkpoints.data, "", " ")
 	if err != nil {
-		library.LogCLI(err.Error(), 0)
+		actors.LogCLI(err.Error(), 0)
 	}
 	actors.Write("consensustree", "current", b)
 	checkpoints.persistToDisk()
 	actors.GetWaitGroup().Done()
-	library.LogCLI("Consensus Tree Mind has shut down", 4)
+	actors.LogCLI("Consensus Tree Mind has shut down", 4)
 }
 
 func (s *checkpoint) restoreFromDisk(f *os.File) {
@@ -65,13 +65,13 @@ func (s *checkpoint) restoreFromDisk(f *os.File) {
 	err := json.NewDecoder(f).Decode(&s.data)
 	if err != nil {
 		if err.Error() != "EOF" {
-			library.LogCLI(err.Error(), 0)
+			actors.LogCLI(err.Error(), 0)
 		}
 	}
 	s.mutex.Unlock()
 	err = f.Close()
 	if err != nil {
-		library.LogCLI(err.Error(), 0)
+		actors.LogCLI(err.Error(), 0)
 	}
 }
 
@@ -79,7 +79,7 @@ func (s *checkpoint) restoreFromDisk(f *os.File) {
 func (s *checkpoint) persistToDisk() {
 	b, err := json.MarshalIndent(s.data, "", " ")
 	if err != nil {
-		library.LogCLI(err.Error(), 0)
+		actors.LogCLI(err.Error(), 0)
 	}
 	actors.Write("consensustree", "current", b)
 }

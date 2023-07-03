@@ -76,11 +76,11 @@ func handleEvents() {
 			case event := <-eventChan:
 				//fmt.Println(event.ID)
 				if !addEventToCache(event) {
-					if event.Kind == 640064 && !eventIsInState(event.ID) {
+					if event.Kind == 640001 && !eventIsInState(event.ID) {
 						//fmt.Printf("\nconsensus event from relay:\n%#v\n", event)
 						err := handleConsensusEvent(event)
 						if err != nil {
-							library.LogCLI(err.Error(), 0)
+							actors.LogCLI(err.Error(), 0)
 						}
 					} else {
 						stack.Push(&event)
@@ -102,7 +102,7 @@ func handleEvents() {
 					}
 					if !ok {
 						if replay.GetStateHash() != lastReplayHash {
-							library.LogCLI("Some state has changed, so we are attempting to replay previously failed state change events", 4)
+							actors.LogCLI("Some state has changed, so we are attempting to replay previously failed state change events", 4)
 							lastReplayHash = replay.GetStateHash()
 							for _, n := range getAllUnhandledStateChangeEventsFromCache() {
 								processStateChangeEventOutOfConsensus(&n)
@@ -156,12 +156,12 @@ func handleConsensusEvent(e nostr.Event) error {
 			case e := <-toHandle:
 				event, ok := getEventFromCache(e)
 				if !ok {
-					library.LogCLI("could not get event "+e, 2)
+					actors.LogCLI("could not get event "+e, 2)
 					returnResult <- false
 				}
 				if ok {
 					if err := handleEvent(event, true); err != nil {
-						library.LogCLI(fmt.Sprintf("%s failed: %s", event.ID, err.Error()), 1)
+						actors.LogCLI(fmt.Sprintf("%s failed: %s", event.ID, err.Error()), 1)
 						returnResult <- false
 					} else {
 						returnResult <- true
@@ -204,12 +204,12 @@ func GetEventFromCache(id library.Sha256) (n nostr.Event) {
 	return
 }
 
-func getAll640064() (el []nostr.Event) {
+func getAll640001() (el []nostr.Event) {
 	//todo filter so we only reutrn unique inner event + signer + height
 	eventCacheMu.Lock()
 	defer eventCacheMu.Unlock()
 	for _, event := range eventCache {
-		if event.Kind == 640064 {
+		if event.Kind == 640001 {
 			el = append(el, event)
 		}
 	}
@@ -221,7 +221,7 @@ func getAllUnhandledStateChangeEventsFromCache() (el []nostr.Event) {
 	eventCacheMu.Lock()
 	defer eventCacheMu.Unlock()
 	for _, event := range eventCache {
-		if event.Kind != 640064 {
+		if event.Kind != 640001 {
 			if !eventIsInState(event.ID) {
 				el = append(el, event)
 			}
@@ -250,7 +250,7 @@ func handleEvent(e nostr.Event, fromConsensusEvent bool) error {
 	if eventIsInState(e.ID) {
 		return fmt.Errorf("event %s is already in our local state", e.ID)
 	}
-	library.LogCLI(fmt.Sprintf("Attempting to handle state change event %s [consensus mode: %v]", e.ID, fromConsensusEvent), 4)
+	actors.LogCLI(fmt.Sprintf("Attempting to handle state change event %s [consensus mode: %v]", e.ID, fromConsensusEvent), 4)
 	closer, replayState, ok := replay.HandleEvent(e)
 	if ok {
 		eventsInState[e.ID] = e
@@ -260,7 +260,7 @@ func handleEvent(e nostr.Event, fromConsensusEvent bool) error {
 			closer <- true
 			newReplayState := <-replayState
 			close(replayState)
-			library.LogCLI(fmt.Sprintf("State has been updated by %s [consensus mode: %v]", e.ID, fromConsensusEvent), 3)
+			actors.LogCLI(fmt.Sprintf("State has been updated by %s [consensus mode: %v]", e.ID, fromConsensusEvent), 3)
 			actors.AppendState("replay", newReplayState)
 			n, _ := actors.AppendState(mindName, mappedState)
 			b, err := json.Marshal(n)
@@ -273,7 +273,7 @@ func handleEvent(e nostr.Event, fromConsensusEvent bool) error {
 				if !fromConsensusEvent {
 					stateEvent := actors.CurrentStateEventBuilder(fmt.Sprintf("%s", b))
 					Publish(stateEvent)
-					library.LogCLI(fmt.Sprintf("Published current state in event %s", stateEvent.ID), 4)
+					actors.LogCLI(fmt.Sprintf("Published current state in event %s", stateEvent.ID), 4)
 					time.Sleep(time.Second)
 				}
 				return nil
@@ -320,8 +320,8 @@ func routeEvent(e nostr.Event) (mindName string, newState any, err error) {
 	case k >= 641800 && k <= 641899:
 		mindName = "problems"
 		newState, err = problems.HandleEvent(e)
-	case k == 640064:
-		fmt.Printf("\n640064\n%#v\n", e)
+	case k == 640001:
+		fmt.Printf("\n640001\n%#v\n", e)
 	case k == 1:
 		mindName = ""
 		newState = nil

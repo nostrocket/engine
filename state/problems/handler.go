@@ -48,21 +48,6 @@ func handleByTags(event nostr.Event) (m Mapped, e error) {
 	return nil, fmt.Errorf("no valid operation found 543c2345")
 }
 
-func handleCreationEvent(event nostr.Event) (m Mapped, e error) {
-	if operation, ok := library.GetFirstTag(event, "op"); ok {
-		ops := strings.Split(operation, ".")
-		if len(ops) > 3 {
-			if ops[2] == "create" {
-				switch o := ops[3]; {
-				case o == "anchor":
-					return handleNewAnchor(event)
-				}
-			}
-		}
-	}
-	return nil, fmt.Errorf("no valid operation found 3425345")
-}
-
 func handleMetadata(event nostr.Event) (m Mapped, e error) {
 	if anchor, ok := library.GetReply(event); ok {
 		if currentProblem, problemExists := currentState.data[anchor]; problemExists {

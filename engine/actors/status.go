@@ -14,6 +14,10 @@ func GetTerminateChan() chan struct{} {
 	return terminateChan
 }
 
+func Shutdown() {
+	close(terminateChan)
+}
+
 var waitGroup *deadlock.WaitGroup
 
 func SetWaitGroup(group *deadlock.WaitGroup) {

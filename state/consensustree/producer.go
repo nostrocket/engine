@@ -44,7 +44,7 @@ package consensustree
 //		t = append(t, nostr.Tag{"e", eID, "", "reply"})
 //	}
 //
-//	j, err := json.Marshal(Kind640064{
+//	j, err := json.Marshal(Kind640001{
 //		StateChangeEventID: stateChangeEventID,
 //		Height:             eventHeight,
 //		BitcoinHeight:      bitcoinHeight,
@@ -55,7 +55,7 @@ package consensustree
 //	n := nostr.Event{
 //		PubKey:    actors.MyWallet().Account,
 //		CreatedAt: time.Now(),
-//		Kind:      640064,
+//		Kind:      640001,
 //		Tags:      t,
 //		Content:   fmt.Sprintf("%s", j),
 //	}

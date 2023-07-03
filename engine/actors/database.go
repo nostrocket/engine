@@ -4,13 +4,11 @@ import (
 	"bytes"
 	"io"
 	"os"
-
-	"nostrocket/engine/library"
 )
 
 func Open(mind, db string) (*os.File, bool) {
 	if err := os.MkdirAll(directory(mind), 0777); err != nil {
-		library.LogCLI(err.Error(), 0)
+		LogCLI(err.Error(), 0)
 	}
 	_, err := os.Stat(directory(mind) + db + ".dat")
 	if os.IsNotExist(err) {
@@ -18,7 +16,7 @@ func Open(mind, db string) (*os.File, bool) {
 	}
 	file, err := os.Open(directory(mind) + db + ".dat")
 	if err != nil {
-		library.LogCLI(err.Error(), 0)
+		LogCLI(err.Error(), 0)
 		return nil, false //IDE helper
 	}
 	return file, true
@@ -27,17 +25,17 @@ func Open(mind, db string) (*os.File, bool) {
 func Write(mind, db string, b []byte) {
 	os.Remove(directory(mind) + db + ".dat")
 	if err := os.MkdirAll(directory(mind), 0777); err != nil {
-		library.LogCLI(err.Error(), 0)
+		LogCLI(err.Error(), 0)
 	}
 	f, err := os.Create(directory(mind) + db + ".dat")
 	if err != nil {
-		library.LogCLI(err.Error(), 0)
+		LogCLI(err.Error(), 0)
 		return //IDE helper
 	}
 	defer f.Close()
 	_, err = io.Copy(f, bytes.NewReader(b))
 	if err != nil {
-		library.LogCLI(err.Error(), 0)
+		LogCLI(err.Error(), 0)
 		return //IDE helper
 	}
 }

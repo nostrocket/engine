@@ -31,7 +31,7 @@ func startDb() {
 		go start(ready)
 		// when the database has started, the goroutine will close the `ready` channel.
 		<-ready //This channel listener blocks until closed by `startDb`.
-		library.LogCLI("Identity Mind has started", 4)
+		actors.LogCLI("Identity Mind has started", 4)
 	}
 }
 
@@ -55,7 +55,7 @@ func start(ready chan struct{}) {
 	//actors.Write("identity", "current", b)
 	//currentState.persistToDisk()
 	actors.GetWaitGroup().Done()
-	library.LogCLI("Identity Mind has shut down", 4)
+	actors.LogCLI("Identity Mind has shut down", 4)
 }
 
 func insertIgnitionState() {

@@ -31,7 +31,7 @@ func startDb() {
 		go start(ready)
 		// when the database has started, the goroutine will close the `ready` channel.
 		<-ready //This channel listener blocks until closed by `startDb`.
-		library.LogCLI("Problems Mind has started", 4)
+		actors.LogCLI("Problems Mind has started", 4)
 	}
 }
 
@@ -43,7 +43,7 @@ func start(ready chan struct{}) {
 	currentState.mutex.Lock()
 	defer currentState.mutex.Unlock()
 	actors.GetWaitGroup().Done()
-	library.LogCLI("Problems Mind has shut down", 4)
+	actors.LogCLI("Problems Mind has shut down", 4)
 }
 
 func GetMap() Mapped {

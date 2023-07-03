@@ -25,13 +25,13 @@ func MyWallet() library.Wallet {
 		if w, ok := getWalletFromDisk(); ok {
 			currentWallet = w
 		} else {
-			library.LogCLI("Generating a new wallet, write down the seed words if you want to keep it", 4)
+			LogCLI("Generating a new wallet, write down the seed words if you want to keep it", 4)
 			currentWallet = makeNewWallet()
 			fmt.Printf("\n\n~NEW WALLET~\nPublic Key: %s\nPrivate Key: %s\nSeed Words: %s\n\n", currentWallet.Account, currentWallet.PrivateKey, currentWallet.SeedWords)
 		}
 	}
 	if err := persistCurrentWallet(); err != nil {
-		library.LogCLI(err.Error(), 0)
+		LogCLI(err.Error(), 0)
 	}
 	return currentWallet
 }
@@ -39,12 +39,12 @@ func MyWallet() library.Wallet {
 func makeNewWallet() library.Wallet {
 	seedWords, err := nip06.GenerateSeedWords()
 	if err != nil {
-		library.LogCLI(err.Error(), 0)
+		LogCLI(err.Error(), 0)
 	}
 	seed := nip06.SeedFromWords(seedWords)
 	sk, err := nip06.PrivateKeyFromSeed(seed)
 	if err != nil {
-		library.LogCLI(err.Error(), 0)
+		LogCLI(err.Error(), 0)
 	}
 	return library.Wallet{
 		PrivateKey: sk,
@@ -55,7 +55,7 @@ func makeNewWallet() library.Wallet {
 
 func getPubKey(privateKey string) string {
 	if keyb, err := hex.DecodeString(privateKey); err != nil {
-		library.LogCLI(fmt.Sprintf("Error decoding key from hex: %s\n", err.Error()), 0)
+		LogCLI(fmt.Sprintf("Error decoding key from hex: %s\n", err.Error()), 0)
 	} else {
 		_, pubkey := btcec.PrivKeyFromBytes(keyb)
 		return hex.EncodeToString(pubkey.X().Bytes())
@@ -66,16 +66,16 @@ func getPubKey(privateKey string) string {
 func persistCurrentWallet() error {
 	file, err := os.Create(MakeOrGetConfig().GetString("rootDir") + "wallet.dat")
 	if err != nil {
-		library.LogCLI(err.Error(), 0)
+		LogCLI(err.Error(), 0)
 	}
 	defer file.Close()
 	bytes, err := json.Marshal(currentWallet)
 	if err != nil {
-		library.LogCLI(err.Error(), 0)
+		LogCLI(err.Error(), 0)
 	}
 	_, err = file.Write(bytes)
 	if err != nil {
-		library.LogCLI(err.Error(), 0)
+		LogCLI(err.Error(), 0)
 	}
 	return nil
 }
@@ -83,12 +83,12 @@ func persistCurrentWallet() error {
 func getWalletFromDisk() (w library.Wallet, ok bool) {
 	file, err := ioutil.ReadFile(MakeOrGetConfig().GetString("rootDir") + "wallet.dat")
 	if err != nil {
-		library.LogCLI(fmt.Sprintf("Error getting wallet file: %s", err.Error()), 2)
+		LogCLI(fmt.Sprintf("Error getting wallet file: %s", err.Error()), 2)
 		return library.Wallet{}, false
 	}
 	err = json.Unmarshal(file, &w)
 	if err != nil {
-		library.LogCLI(fmt.Sprintf("Error parsing wallet file: %s", err.Error()), 3)
+		LogCLI(fmt.Sprintf("Error parsing wallet file: %s", err.Error()), 3)
 		return library.Wallet{}, false
 	}
 	return w, true

@@ -6,7 +6,6 @@ import (
 
 	"github.com/eiannone/keyboard"
 	"nostrocket/engine/actors"
-	"nostrocket/engine/library"
 	"nostrocket/messaging/eventconductor"
 	"nostrocket/state/consensustree"
 	"nostrocket/state/identity"
@@ -99,7 +98,7 @@ func cliListener(interrupt chan struct{}) {
 			fmt.Printf("\n%#v\n", currentState)
 			b, err := json.Marshal(currentState)
 			if err != nil {
-				library.LogCLI(err, 2)
+				actors.LogCLI(err, 2)
 			} else {
 				eventconductor.Publish(actors.CurrentStateEventBuilder(fmt.Sprintf("%s", b)))
 			}

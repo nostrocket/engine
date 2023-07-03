@@ -25,7 +25,7 @@ type db struct {
 	mutex *deadlock.Mutex
 }
 
-type Kind640064 struct {
+type Kind640001 struct {
 	StateChangeEventID library.Sha256 `json:"event_id"`
 	Height             int64          `json:"height"`
 	BitcoinHeight      int64          `json:"bitcoin_height"`
