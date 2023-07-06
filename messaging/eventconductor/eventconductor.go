@@ -13,10 +13,10 @@ import (
 	"nostrocket/messaging/eventcatcher"
 	"nostrocket/state/consensustree"
 	"nostrocket/state/identity"
-	"nostrocket/state/mirv"
+	"nostrocket/state/merits"
 	"nostrocket/state/problems"
 	"nostrocket/state/replay"
-	"nostrocket/state/shares"
+	"nostrocket/state/rockets"
 )
 
 type EventMap map[string]nostr.Event
@@ -31,8 +31,8 @@ func Start() {
 	eventsInState[actors.ReplayPrevention] = nostr.Event{}
 	eventsInState[actors.ConsensusTree] = nostr.Event{}
 	eventsInState[actors.Identity] = nostr.Event{}
-	eventsInState[actors.Shares] = nostr.Event{}
-	eventsInState[actors.Mirvs] = nostr.Event{}
+	eventsInState[actors.Merits] = nostr.Event{}
+	eventsInState[actors.Rockets] = nostr.Event{}
 	eventsInState[actors.Problems] = nostr.Event{}
 	eventsInStateLock.Unlock()
 	go handleEvents()
@@ -63,7 +63,7 @@ func handleEvents() {
 		var eose bool
 		go eventcatcher.SubscribeToTree(eventChan, publishChan, eoseChan)
 		var timeToWaitBeforeHandlingNewStateChangeEvents time.Duration
-		votepowerPosition := shares.GetPosition(actors.MyWallet().Account)
+		votepowerPosition := merits.GetPosition(actors.MyWallet().Account)
 		if votepowerPosition > 0 {
 			timeToWaitBeforeHandlingNewStateChangeEvents = time.Duration(votepowerPosition * 1000000 * 100)
 		}
@@ -92,7 +92,7 @@ func handleEvents() {
 				}
 				lastReplayHash = replay.GetStateHash()
 				//todo create exception for ignition event if we are ignition account
-				if eose && shares.VotepowerForAccount(actors.MyWallet().Account) > 0 && votepowerPosition > 0 {
+				if eose && merits.VotepowerForAccount(actors.MyWallet().Account) > 0 && votepowerPosition > 0 {
 					for _, event := range consensustree.DeleteDuplicateConsensusEvents() {
 						fmt.Printf("\nTODO: publish here after we know we aren't deleting valid events\n%#v\n", event)
 					}
@@ -312,11 +312,11 @@ func routeEvent(e nostr.Event) (mindName string, newState any, err error) {
 		mindName = "identity"
 		newState, err = identity.HandleEvent(e)
 	case k >= 640200 && k <= 640299:
-		mindName = "shares"
-		newState, err = shares.HandleEvent(e)
+		mindName = "merits"
+		newState, err = merits.HandleEvent(e)
 	case k >= 640600 && k <= 640699:
-		mindName = "mirvs"
-		newState, err = mirv.HandleEvent(e)
+		mindName = "rockets"
+		newState, err = rockets.HandleEvent(e)
 	case k >= 641800 && k <= 641899:
 		mindName = "problems"
 		newState, err = problems.HandleEvent(e)

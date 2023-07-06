@@ -9,16 +9,16 @@ import (
 
 type CurrentState struct {
 	Identity any `json:"identity"`
-	Shares   any `json:"shares"`
+	Merits   any `json:"merits"`
 	Replay   any `json:"replay"`
-	Mirvs    any `json:"mirvs"`
+	Rockets  any `json:"rockets"`
 	Problems any `json:"problems"`
 	mu       *deadlock.Mutex
 }
 
 var currentState = CurrentState{
 	Identity: nil,
-	Shares:   nil,
+	Merits:   nil,
 	Replay:   nil,
 	Problems: nil,
 	mu:       &deadlock.Mutex{},
@@ -30,12 +30,12 @@ func AppendState(name string, state any) (CurrentState, bool) {
 	switch name {
 	case "identity":
 		currentState.Identity = state
-	case "shares":
-		currentState.Shares = state
+	case "merits":
+		currentState.Merits = state
 	case "replay":
 		currentState.Replay = state
-	case "mirvs":
-		currentState.Mirvs = state
+	case "rockets":
+		currentState.Rockets = state
 	case "problems":
 		currentState.Problems = state
 	default:

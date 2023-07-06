@@ -1,4 +1,4 @@
-package mirv
+package rockets
 
 import (
 	"nostrocket/engine/library"

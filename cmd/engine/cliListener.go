@@ -9,9 +9,9 @@ import (
 	"nostrocket/messaging/eventconductor"
 	"nostrocket/state/consensustree"
 	"nostrocket/state/identity"
+	"nostrocket/state/merits"
 	"nostrocket/state/problems"
 	"nostrocket/state/replay"
-	"nostrocket/state/shares"
 )
 
 // cliListener is a cheap and nasty way to speed up development cycles. It listens for keypresses and executes commands.
@@ -34,15 +34,15 @@ func cliListener(interrupt chan struct{}) {
 			}
 			fmt.Println("Key " + str + " is not bound to any test procedures. See main.cliListener for more details.")
 		case "s":
-			m := shares.GetMapped()
+			m := merits.GetMapped()
 			for id, m2 := range m {
-				fmt.Printf("\n--------- Mirv Name: %s -----------\n", id)
-				vp, _ := shares.TotalVotepower()
+				fmt.Printf("\n--------- Rocket Name: %s -----------\n", id)
+				vp, _ := merits.TotalVotepower()
 				fmt.Printf("\nTotal Votepower: %d\n", vp)
 				for account, share := range m2 {
-					pm, _ := shares.Permille(shares.VotepowerForAccount(account), vp)
-					fmt.Printf("\nAccount: %s\nLeadTimeLockedShares: %d\nLeadTime: %d\nLastLeadTimeChange: %d\nLeadTimeUnlockedShares: %d\nOpReturnAddresses: %s\nVotepower: %d Permille: %d\n",
-						account, share.LeadTimeLockedShares, share.LeadTime, share.LeadTimeUnlockedShares, share.LastLtChange, share.OpReturnAddresses, shares.VotepowerForAccount(account), pm)
+					pm, _ := merits.Permille(merits.VotepowerForAccount(account), vp)
+					fmt.Printf("\nAccount: %s\nLeadTimeLockedMerits: %d\nLeadTime: %d\nLastLeadTimeChange: %d\nLeadTimeUnlockedMerits: %d\nOpReturnAddresses: %s\nVotepower: %d Permille: %d\n",
+						account, share.LeadTimeLockedMerits, share.LeadTime, share.LeadTimeUnlockedMerits, share.LastLtChange, share.OpReturnAddresses, merits.VotepowerForAccount(account), pm)
 				}
 				fmt.Printf("\n--------- End of data for: %s -----------\n\n", id)
 			}
@@ -50,7 +50,7 @@ func cliListener(interrupt chan struct{}) {
 			close(interrupt)
 		case "w":
 			fmt.Printf("Current Wallet: \n%s\n", actors.MyWallet().Account)
-			fmt.Printf("Current Votepower: \n%#v\n", shares.VotepowerForAccount(actors.MyWallet().Account))
+			fmt.Printf("Current Votepower: \n%#v\n", merits.VotepowerForAccount(actors.MyWallet().Account))
 		case "i":
 			for account, i := range identity.GetMap() {
 				fmt.Printf("ACCOUNT: %s\n%#v\n", account, i)

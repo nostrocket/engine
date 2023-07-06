@@ -1,4 +1,4 @@
-package mirv
+package rockets
 
 import (
 	"github.com/sasha-s/go-deadlock"
@@ -31,7 +31,7 @@ func startDb() {
 		go start(ready)
 		// when the database has started, the goroutine will close the `ready` channel.
 		<-ready //This channel listener blocks until closed by `startDb`.
-		actors.LogCLI("Mirvs Mind has started", 4)
+		actors.LogCLI("Rockets Mind has started", 4)
 	}
 }
 
@@ -62,7 +62,7 @@ func start(ready chan struct{}) {
 	//actors.Write("mirvs", "current", b)
 	//currentState.persistToDisk()
 	actors.GetWaitGroup().Done()
-	actors.LogCLI("Mirvs Mind has shut down", 4)
+	actors.LogCLI("Rockets Mind has shut down", 4)
 }
 
 //func (s *db) restoreFromDisk(f *os.File) {

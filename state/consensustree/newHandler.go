@@ -12,7 +12,7 @@ import (
 	"nostrocket/engine/actors"
 	"nostrocket/engine/helpers"
 	"nostrocket/engine/library"
-	"nostrocket/state/shares"
+	"nostrocket/state/merits"
 )
 
 var events = make(map[library.Sha256]nostr.Event)
@@ -38,17 +38,17 @@ func HandleConsensusEvent(e nostr.Event, scEvent chan library.Sha256, scResult c
 	if len(unmarshalled.StateChangeEventID) != 64 {
 		return fmt.Errorf("invalid state change event ID")
 	}
-	//if unmarshalled.StateChangeEventID == "2e11fb3322c7fb084e82622ddc1bc59c0c28565c3f8a816c13682745741a9f9e" {
-	//	cPublish <- helpers.DeleteEvent(e.ID, "invalid state change event")
-	//	return nil
-	//}
+	if unmarshalled.StateChangeEventID == "519eb09f82997cdb8ffcb3529b542392eba9500265c484ec1441843c740648bd" {
+		cPublish <- helpers.DeleteEvent(e.ID, "invalid state change event")
+		return nil
+	}
 	currentState.mutex.Lock()
 	defer currentState.mutex.Unlock()
 	return handleNewConsensusEvent(unmarshalled, e, scEvent, scResult, cPublish, localEvent)
 }
 
 func handleNewConsensusEvent(unmarshalled Kind640001, e nostr.Event, scEvent chan library.Sha256, scResult chan bool, cPublish chan nostr.Event, localEvent bool) error {
-	if shares.VotepowerForAccount(e.PubKey) < 1 {
+	if merits.VotepowerForAccount(e.PubKey) < 1 {
 		events[e.ID] = e
 		return nil
 	}
@@ -137,20 +137,20 @@ func handleNewConsensusEvent(unmarshalled Kind640001, e nostr.Event, scEvent cha
 			}
 		}
 	}
-	currentInner.Signers[e.PubKey] = shares.VotepowerForAccount(e.PubKey)
+	currentInner.Signers[e.PubKey] = merits.VotepowerForAccount(e.PubKey)
 	currentInner.ConsensusEvents[e.ID] = e
 	if e.PubKey == actors.MyWallet().Account {
 		currentInner.IHaveSigned = true
 	}
 	var votepower int64
 	for account, _ := range currentInner.Signers {
-		votepower = votepower + shares.VotepowerForAccount(account)
+		votepower = votepower + merits.VotepowerForAccount(account)
 	}
-	totalVp, err := shares.TotalVotepower()
+	totalVp, err := merits.TotalVotepower()
 	if err != nil {
 		return err
 	}
-	permille, err := shares.Permille(votepower, totalVp)
+	permille, err := merits.Permille(votepower, totalVp)
 	if err != nil {
 		return err
 	}
@@ -171,7 +171,7 @@ func handleNewConsensusEvent(unmarshalled Kind640001, e nostr.Event, scEvent cha
 			}
 			currentInner.StateChangeEventHandled = true
 		}
-		if shares.VotepowerForAccount(actors.MyWallet().Account) > 0 && !currentInner.IHaveSigned {
+		if merits.VotepowerForAccount(actors.MyWallet().Account) > 0 && !currentInner.IHaveSigned {
 			ce, err := produceConsensusEvent(Kind640001{
 				StateChangeEventID: currentInner.StateChangeEventID,
 				Height:             currentInner.StateChangeEventHeight,
@@ -229,7 +229,7 @@ func deleteDuplicateConsensusEvents() (r []nostr.Event) {
 }
 
 func CreateNewConsensusEvent(ev nostr.Event) (n nostr.Event, e error) {
-	if shares.VotepowerForAccount(actors.MyWallet().Account) < 1 {
+	if merits.VotepowerForAccount(actors.MyWallet().Account) < 1 {
 		return n, fmt.Errorf("current wallet has no votepower")
 	}
 	currentState.mutex.Lock()

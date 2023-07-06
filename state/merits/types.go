@@ -1,14 +1,14 @@
-package shares
+package merits
 
 import (
 	"nostrocket/engine/library"
 )
 
-type Share struct {
-	LeadTimeLockedShares   int64
+type Merit struct {
+	LeadTimeLockedMerits   int64
 	LeadTime               int64 // in multiples of 2016 blocks (2 weeks)
 	LastLtChange           int64 // btc height
-	LeadTimeUnlockedShares int64 //Approved Expenses can be swept into here and sold even if Participant's LT is >0
+	LeadTimeUnlockedMerits int64 //Approved Expenses can be swept into here and sold even if Participant's LT is >0
 	OpReturnAddresses      []string
 }
 
@@ -16,8 +16,8 @@ type Share struct {
 //Used for adjusting lead time
 type Kind640200 struct {
 	AdjustLeadTime string //+ or -
-	LockShares     int64
-	UnlockShares   int64
+	LockMerits     int64
+	UnlockMerits   int64
 }
 
 //Kind640202 STATUS:DRAFT
@@ -29,9 +29,9 @@ type Kind640202 struct {
 }
 
 //Kind640208 STATUS:DRAFT
-//Used for creating a new cap table for a mirv
+//Used for creating a new cap table for a rocket
 type Kind640208 struct {
 	RocketID library.RocketID `json:"rocket_id"`
 }
 
-type Mapped map[library.RocketID]map[library.Account]Share
+type Mapped map[library.RocketID]map[library.Account]Merit

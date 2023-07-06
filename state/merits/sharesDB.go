@@ -1,4 +1,4 @@
-package shares
+package merits
 
 import (
 	"encoding/json"
@@ -11,12 +11,12 @@ import (
 	"github.com/sasha-s/go-deadlock"
 	"nostrocket/engine/actors"
 	"nostrocket/engine/library"
-	"nostrocket/state/mirv"
+	"nostrocket/state/rockets"
 )
 
 type db struct {
 	rocketID library.RocketID
-	data     map[library.Account]Share
+	data     map[library.Account]Merit
 	mutex    *deadlock.Mutex
 }
 
@@ -34,10 +34,10 @@ func startDb() {
 	defer available.Unlock()
 	if !started {
 		started = true
-		for s, _ := range mirv.Names() {
+		for s, _ := range rockets.Names() {
 			currentState[s] = db{
 				rocketID: s,
-				data:     make(map[library.Account]Share),
+				data:     make(map[library.Account]Merit),
 				mutex:    &deadlock.Mutex{},
 			}
 		}
@@ -48,7 +48,7 @@ func startDb() {
 		go start(ready)
 		// when the database has started, the goroutine will close the `ready` channel.
 		<-ready //This channel listener blocks until closed by `startDb`.
-		actors.LogCLI("Shares Mind has started", 4)
+		actors.LogCLI("Merits Mind has started", 4)
 	}
 }
 
@@ -69,11 +69,11 @@ func start(ready chan struct{}) {
 	//}
 	if debug {
 		fmt.Println(currentState["nostrocket"].data)
-		currentState["nostrocket"].data["7543214dd1afe9b89d9bcd9d3b64d4596b9bdeb9385e95dabc242608de401099"] = Share{
-			LeadTimeLockedShares:   10,
+		currentState["nostrocket"].data["7543214dd1afe9b89d9bcd9d3b64d4596b9bdeb9385e95dabc242608de401099"] = Merit{
+			LeadTimeLockedMerits:   10,
 			LeadTime:               1,
 			LastLtChange:           0,
-			LeadTimeUnlockedShares: 0,
+			LeadTimeUnlockedMerits: 0,
 			OpReturnAddresses:      nil,
 		}
 	}
@@ -85,32 +85,8 @@ func start(ready chan struct{}) {
 	//	d.persistToDisk()
 	//}
 	actors.GetWaitGroup().Done()
-	actors.LogCLI("Shares Mind has shut down", 4)
+	actors.LogCLI("Merits Mind has shut down", 4)
 }
-
-//func (s *db) restoreFromDisk(f *os.File) {
-//	s.mutex.Lock()
-//	err := json.NewDecoder(f).Decode(&s.data)
-//	if err != nil {
-//		if err.Error() != "EOF" {
-//			library.LogCLI(err.Error(), 0)
-//		}
-//	}
-//	s.mutex.Unlock()
-//	err = f.Close()
-//	if err != nil {
-//		library.LogCLI(err.Error(), 0)
-//	}
-//}
-
-//// persistToDisk persists the current state to disk
-//func (s *db) persistToDisk() {
-//	b, err := json.MarshalIndent(s.data, "", " ")
-//	if err != nil {
-//		library.LogCLI(err.Error(), 0)
-//	}
-//	actors.Write("shares", s.rocketID, b)
-//}
 
 func makeNewCapTable(name library.RocketID) error {
 	if table, exists := currentState[name]; exists {
@@ -120,16 +96,16 @@ func makeNewCapTable(name library.RocketID) error {
 	}
 	currentState[name] = db{
 		rocketID: name,
-		data:     make(map[library.Account]Share),
+		data:     make(map[library.Account]Merit),
 		mutex:    &deadlock.Mutex{},
 	}
 	return nil
 }
 
 func getMapped() Mapped {
-	mOuter := make(map[library.RocketID]map[library.Account]Share)
+	mOuter := make(map[library.RocketID]map[library.Account]Merit)
 	for id, d := range currentState {
-		mOuter[id] = make(map[library.Account]Share)
+		mOuter[id] = make(map[library.Account]Merit)
 		for account, share := range d.data {
 			mOuter[id][account] = share
 		}
@@ -141,8 +117,8 @@ func VotepowerForAccount(account library.Account) int64 {
 	startDb()
 	currentState["nostrocket"].mutex.Lock()
 	defer currentState["nostrocket"].mutex.Unlock()
-	if shares, ok := currentState["nostrocket"].data[account]; ok {
-		return shares.LeadTime * shares.LeadTimeLockedShares
+	if merits, ok := currentState["nostrocket"].data[account]; ok {
+		return merits.LeadTime * merits.LeadTimeLockedMerits
 	}
 	return 0
 }
@@ -154,7 +130,7 @@ func TotalVotepower() (int64, error) {
 	if data, ok := currentState["nostrocket"]; ok {
 		var total int64
 		for _, share := range data.data {
-			total = total + (share.LeadTimeLockedShares * share.LeadTime)
+			total = total + (share.LeadTimeLockedMerits * share.LeadTime)
 		}
 		if total > (9223372036854775807 / 5) {
 			actors.LogCLI("we are 20% of the way to an overflow bug", 1)
@@ -164,7 +140,7 @@ func TotalVotepower() (int64, error) {
 		}
 		return total, nil
 	}
-	return 0, fmt.Errorf("no nostrocket state in shares mind")
+	return 0, fmt.Errorf("no nostrocket state in merits mind")
 }
 
 func Permille(signed, total int64) (int64, error) {
@@ -184,26 +160,26 @@ func GetPosition(account library.Account) int64 {
 	startDb()
 	currentState["nostrocket"].mutex.Lock()
 	defer currentState["nostrocket"].mutex.Unlock()
-	var shares []struct {
+	var merits []struct {
 		acc       library.Account
 		votepower int64
 	}
 	m := getMapped()
 	if d, ok := m["nostrocket"]; ok {
 		for l, share := range d {
-			shares = append(shares, struct {
+			merits = append(merits, struct {
 				acc       library.Account
 				votepower int64
-			}{acc: l, votepower: share.LeadTime * share.LeadTimeLockedShares})
+			}{acc: l, votepower: share.LeadTime * share.LeadTimeLockedMerits})
 		}
 	}
-	sort.Slice(shares, func(i, j int) bool {
-		if shares[i].votepower > shares[j].votepower {
+	sort.Slice(merits, func(i, j int) bool {
+		if merits[i].votepower > merits[j].votepower {
 			return true
 		}
 		return false
 	})
-	for i, share := range shares {
+	for i, share := range merits {
 		if share.acc == account {
 			return int64(i) + 1
 		}

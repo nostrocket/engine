@@ -1,4 +1,4 @@
-package mirv
+package rockets
 
 import (
 	"encoding/json"
@@ -31,7 +31,7 @@ func handle640600(event nostr.Event) (m Mapped, err error) {
 		return m, fmt.Errorf("%s reported for event %s", err.Error(), event.ID)
 	}
 	if nameTaken(unmarshalled.RocketID) {
-		return m, fmt.Errorf("event %s requests creation of new mirv \"%s\" but this name is already taken", event.ID, unmarshalled.RocketID)
+		return m, fmt.Errorf("event %s requests creation of new rocket \"%s\" but this name is already taken", event.ID, unmarshalled.RocketID)
 	}
 	currentState.upsert(unmarshalled.RocketID, Rocket{
 		RocketID:  unmarshalled.RocketID,
