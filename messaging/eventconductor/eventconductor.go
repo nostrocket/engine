@@ -65,6 +65,7 @@ func handleEvents() {
 		var timeToWaitBeforeHandlingNewStateChangeEvents time.Duration
 		votepowerPosition := merits.GetPosition(actors.MyWallet().Account)
 		if votepowerPosition > 0 {
+			//hacky way to avoid consensus reorgs - let the highest votepower go first.
 			timeToWaitBeforeHandlingNewStateChangeEvents = time.Duration(votepowerPosition * 1000000 * 100)
 		}
 		lastReplayHash := replay.GetStateHash()
@@ -77,7 +78,7 @@ func handleEvents() {
 				//fmt.Println(event.ID)
 				if !addEventToCache(event) {
 					if event.Kind == 640001 && !eventIsInState(event.ID) {
-						//fmt.Printf("\nconsensus event from relay:\n%#v\n", event)
+						actors.LogCLI(fmt.Sprintf("consensus event from relay: %s", event.ID), 4)
 						err := handleConsensusEvent(event)
 						if err != nil {
 							actors.LogCLI(err.Error(), 0)
@@ -154,6 +155,7 @@ func handleConsensusEvent(e nostr.Event) error {
 				fmt.Printf("\nCONSENSUS EVENT TO PUBLISH:\n%#v\n", e)
 				Publish(e)
 			case e := <-toHandle:
+				time.Sleep(time.Millisecond * 200)
 				event, ok := getEventFromCache(e)
 				if !ok {
 					actors.LogCLI("could not get event "+e, 2)
@@ -260,7 +262,7 @@ func handleEvent(e nostr.Event, fromConsensusEvent bool) error {
 			closer <- true
 			newReplayState := <-replayState
 			close(replayState)
-			actors.LogCLI(fmt.Sprintf("State has been updated by %s [consensus mode: %v]", e.ID, fromConsensusEvent), 3)
+			actors.LogCLI(fmt.Sprintf("State of %s has been updated by %s [consensus mode: %v]", mindName, e.ID, fromConsensusEvent), 3)
 			actors.AppendState("replay", newReplayState)
 			n, _ := actors.AppendState(mindName, mappedState)
 			b, err := json.Marshal(n)
@@ -280,6 +282,7 @@ func handleEvent(e nostr.Event, fromConsensusEvent bool) error {
 			}
 		}
 		if err != nil {
+			actors.LogCLI(err.Error(), 3)
 			closer <- false
 			close(replayState)
 			return err
@@ -325,7 +328,7 @@ func routeEvent(e nostr.Event) (mindName string, newState any, err error) {
 	case k == 1:
 		mindName = ""
 		newState = nil
-		err = fmt.Errorf("unhandled kind 1")
+		err = fmt.Errorf("unhandled opcode on kind 1 event")
 		if operation, ok := library.GetFirstTag(e, "op"); ok {
 			ops := strings.Split(operation, ".")
 			if len(ops) > 2 {
@@ -337,6 +340,12 @@ func routeEvent(e nostr.Event) (mindName string, newState any, err error) {
 					case o == "identity":
 						mindName = "identity"
 						newState, err = identity.HandleEvent(e)
+					case o == "merits":
+						mindName = "merits"
+						newState, err = merits.HandleEvent(e)
+					case o == "rockets":
+						mindName = "rockets"
+						newState, err = rockets.HandleEvent(e)
 					}
 				}
 			}

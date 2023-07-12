@@ -8,6 +8,6 @@ type Wallet struct {
 
 type Account = string
 
-type RocketID = string
+type RocketName = string
 
 type Sha256 = string

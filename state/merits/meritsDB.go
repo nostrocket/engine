@@ -1,13 +1,11 @@
 package merits
 
 import (
-	"encoding/json"
 	"fmt"
 	"math"
 	"math/big"
 	"sort"
 
-	"github.com/nbd-wtf/go-nostr"
 	"github.com/sasha-s/go-deadlock"
 	"nostrocket/engine/actors"
 	"nostrocket/engine/library"
@@ -15,12 +13,12 @@ import (
 )
 
 type db struct {
-	rocketID library.RocketID
+	rocketID library.RocketName
 	data     map[library.Account]Merit
 	mutex    *deadlock.Mutex
 }
 
-var currentState = make(map[library.RocketID]db)
+var currentState = make(map[library.RocketName]db)
 var currentStateMu = &deadlock.Mutex{}
 
 var started = false
@@ -34,7 +32,7 @@ func startDb() {
 	defer available.Unlock()
 	if !started {
 		started = true
-		for s, _ := range rockets.Names() {
+		for s, _ := range rockets.NamesAndFounders() {
 			currentState[s] = db{
 				rocketID: s,
 				data:     make(map[library.Account]Merit),
@@ -55,18 +53,32 @@ func startDb() {
 func start(ready chan struct{}) {
 	// We add a delta to the provided waitgroup so that upstream knows when the database has been safely shut down
 	actors.GetWaitGroup().Add(1)
-	k640208 := Kind640208{RocketID: "nostrocket"}
-	j, err := json.Marshal(k640208)
+	//k640208 := Kind640208{RocketName: "nostrocket"}
+	//j, err := json.Marshal(k640208)
+	//if err != nil {
+	//	actors.LogCLI(err.Error(), 0)
+	//}
+	//if _, err := handle640208(nostr.Event{
+	//	PubKey:  actors.IgnitionAccount,
+	//	Content: fmt.Sprintf("%s", j),
+	//}); err != nil {
+	//	actors.LogCLI(err.Error(), 0)
+	//}
+	//}
+	err := makeNewCapTable("nostrocket")
 	if err != nil {
 		actors.LogCLI(err.Error(), 0)
 	}
-	if _, err := handle640208(nostr.Event{
-		PubKey:  actors.IgnitionAccount,
-		Content: fmt.Sprintf("%s", j),
-	}); err != nil {
-		actors.LogCLI(err.Error(), 0)
+	d := currentState["nostrocket"]
+	d.mutex.Lock()
+
+	d.data[actors.IgnitionAccount] = Merit{
+		LeadTimeLockedMerits:   1,
+		LeadTime:               1,
+		LastLtChange:           0,
+		LeadTimeUnlockedMerits: 0,
 	}
-	//}
+	currentState["nostrocket"] = d
 	if debug {
 		fmt.Println(currentState["nostrocket"].data)
 		currentState["nostrocket"].data["7543214dd1afe9b89d9bcd9d3b64d4596b9bdeb9385e95dabc242608de401099"] = Merit{
@@ -77,6 +89,7 @@ func start(ready chan struct{}) {
 			OpReturnAddresses:      nil,
 		}
 	}
+	d.mutex.Unlock()
 	close(ready)
 	<-actors.GetTerminateChan()
 	//for _, d := range currentState {
@@ -88,7 +101,7 @@ func start(ready chan struct{}) {
 	actors.LogCLI("Merits Mind has shut down", 4)
 }
 
-func makeNewCapTable(name library.RocketID) error {
+func makeNewCapTable(name library.RocketName) error {
 	if table, exists := currentState[name]; exists {
 		if len(table.data) > 0 {
 			return fmt.Errorf("this cap table already exists")
@@ -103,7 +116,7 @@ func makeNewCapTable(name library.RocketID) error {
 }
 
 func getMapped() Mapped {
-	mOuter := make(map[library.RocketID]map[library.Account]Merit)
+	mOuter := make(map[library.RocketName]map[library.Account]Merit)
 	for id, d := range currentState {
 		mOuter[id] = make(map[library.Account]Merit)
 		for account, share := range d.data {
@@ -160,6 +173,10 @@ func GetPosition(account library.Account) int64 {
 	startDb()
 	currentState["nostrocket"].mutex.Lock()
 	defer currentState["nostrocket"].mutex.Unlock()
+	return getPostion(account)
+}
+
+func getPostion(account library.Account) int64 {
 	var merits []struct {
 		acc       library.Account
 		votepower int64

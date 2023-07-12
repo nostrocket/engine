@@ -7,12 +7,12 @@ import (
 )
 
 type db struct {
-	data  map[library.RocketID]Rocket
+	data  map[library.RocketName]Rocket
 	mutex *deadlock.Mutex
 }
 
 var currentState = db{
-	data:  make(map[library.RocketID]Rocket),
+	data:  make(map[library.RocketName]Rocket),
 	mutex: &deadlock.Mutex{},
 }
 
@@ -45,9 +45,9 @@ func start(ready chan struct{}) {
 	//}
 	if _, exists := currentState.data["nostrocket"]; !exists {
 		currentState.data["nostrocket"] = Rocket{
-			RocketID:  "nostrocket",
-			CreatedBy: actors.IgnitionAccount,
-			ProblemID: actors.IgnitionEvent,
+			RocketName: "nostrocket",
+			CreatedBy:  actors.IgnitionAccount,
+			ProblemID:  actors.IgnitionEvent,
 		}
 	}
 	//currentState.persistToDisk()
@@ -97,14 +97,31 @@ func GetMap() Mapped {
 }
 
 func getMap() Mapped {
-	m := make(map[library.RocketID]Rocket)
+	m := make(map[library.RocketName]Rocket)
 	for key, val := range currentState.data {
 		m[key] = val
 	}
 	return m
 }
 
-func (s *db) upsert(key library.RocketID, val Rocket) {
-	val.RocketID = key
+func (s *db) upsert(key library.Sha256, val Rocket) {
 	s.data[key] = val
+}
+
+func findRocketByProblemUID(problemUID string) (Rocket, bool) {
+	for _, rocket := range currentState.data {
+		if rocket.ProblemID == problemUID {
+			return rocket, true
+		}
+	}
+	return Rocket{}, false
+}
+
+func findRocketByName(name string) (Rocket, bool) {
+	for _, rocket := range currentState.data {
+		if rocket.RocketName == name {
+			return rocket, true
+		}
+	}
+	return Rocket{}, false
 }

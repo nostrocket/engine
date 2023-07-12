@@ -10,9 +10,6 @@ import (
 func HandleEvent(event nostr.Event) (chan bool, chan Mapped, bool) {
 	startDb()
 	claimedHash, ok := library.GetFirstTag(event, "r")
-	if claimedHash == "a9903e3be5376a3d8021dda60fba7bf5f1705f03c5a0eb00ac082226019d710d" {
-
-	}
 	if ok {
 		if claimedHash == getCurrentHashForAccount(event.PubKey) {
 			closer := make(chan bool)

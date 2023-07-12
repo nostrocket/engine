@@ -13,7 +13,7 @@ func GetFirstTag(e nostr.Event, startsWith string) (string, bool) {
 	return "", false
 }
 
-func GetReply(e nostr.Event) (string, bool) {
+func GetFirstReply(e nostr.Event) (string, bool) {
 	for _, tag := range e.Tags {
 		for i, s := range tag {
 			if s == "reply" {
@@ -26,10 +26,28 @@ func GetReply(e nostr.Event) (string, bool) {
 	return "", false
 }
 
+func GetAllReplies(e nostr.Event) (r []string) {
+	for _, tag := range e.Tags {
+		for i, s := range tag {
+			if s == "reply" {
+				if i == 3 {
+					if len(tag[1]) == 64 {
+						r = append(r, tag[1])
+					}
+				}
+			}
+		}
+	}
+	return
+}
+
 func GetOpData(e nostr.Event) (string, bool) {
 	for _, tag := range e.Tags {
 		if tag.StartsWith([]string{"op"}) {
-			return tag[len(tag)-1], true
+			if len(tag) > 2 {
+				return tag[len(tag)-1], true
+			}
+
 		}
 	}
 	return "", false

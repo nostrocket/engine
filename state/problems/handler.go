@@ -49,7 +49,7 @@ func handleByTags(event nostr.Event) (m Mapped, e error) {
 }
 
 func handleMetadata(event nostr.Event) (m Mapped, e error) {
-	if anchor, ok := library.GetReply(event); ok {
+	if anchor, ok := library.GetFirstReply(event); ok {
 		if currentProblem, problemExists := currentState.data[anchor]; problemExists {
 			if identity.IsUSH(event.PubKey) {
 				var updates int64 = 0
@@ -101,7 +101,7 @@ func handleMetadata(event nostr.Event) (m Mapped, e error) {
 
 func handleContent(event nostr.Event) (m Mapped, e error) {
 	var updates int64 = 0
-	if anchor, ok := library.GetReply(event); ok {
+	if anchor, ok := library.GetFirstReply(event); ok {
 		if identity.IsUSH(event.PubKey) {
 			if currentProblem, problemExists := currentState.data[anchor]; problemExists {
 				if currentProblem.CreatedBy == event.PubKey || identity.IsMaintainer(event.PubKey) {
@@ -135,7 +135,7 @@ func handleContent(event nostr.Event) (m Mapped, e error) {
 func handleNewAnchor(event nostr.Event) (m Mapped, e error) {
 	//fmt.Printf("%#v", event)
 	//var updates int64 = 0
-	if parent, ok := library.GetReply(event); ok {
+	if parent, ok := library.GetFirstReply(event); ok {
 		//exception for ignition problem
 		if len(currentState.data) == 0 && event.PubKey == actors.IgnitionAccount && parent == actors.Problems {
 			return insertProblemAnchor(event, actors.Problems)

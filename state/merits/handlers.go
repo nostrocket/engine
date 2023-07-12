@@ -1,19 +1,14 @@
 package merits
 
 import (
-	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/nbd-wtf/go-nostr"
 	"nostrocket/engine/library"
 	"nostrocket/state/identity"
 	"nostrocket/state/rockets"
 )
-
-//create new mirv merits
-//take in the name of the rocket, and give the creator 1 share with 1 lead time
-//do this for nostrocket itself too
-//create rocket name first. Then another event to create first share.
 
 func HandleEvent(event nostr.Event) (m Mapped, err error) {
 	startDb()
@@ -23,31 +18,45 @@ func HandleEvent(event nostr.Event) (m Mapped, err error) {
 	currentStateMu.Lock()
 	defer currentStateMu.Unlock()
 	switch event.Kind {
-	case 640208:
-		//Create New Mirv Cap Table
-		return handle640208(event)
+	case 1:
+		return handleByTags(event)
 	default:
 		return nil, fmt.Errorf("I am the merits mind, event %s was sent to me but I don't know how to handle kind %d", event.ID, event.Kind)
 	}
 }
 
-func handle640208(event nostr.Event) (m Mapped, err error) {
-	var unmarshalled Kind640208
-	if err = json.Unmarshal([]byte(event.Content), &unmarshalled); err != nil {
-		return m, fmt.Errorf("%s reported for event %s", err.Error(), event.ID)
+func handleByTags(event nostr.Event) (m Mapped, e error) {
+	if operation, ok := library.GetFirstTag(event, "op"); ok {
+		ops := strings.Split(operation, ".")
+		if len(ops) > 2 {
+			if ops[1] == "merits" {
+				switch o := ops[2]; {
+				case o == "register":
+					return handleRegistration(event)
+				}
+			}
+		}
 	}
+	return nil, fmt.Errorf("no valid operation found 35645ft")
+}
+
+func handleRegistration(event nostr.Event) (m Mapped, e error) {
+	var rocketName string
 	var founder library.Account
 	var ok bool
-	if founder, ok = rockets.Names()[unmarshalled.RocketID]; !ok {
-		return m, fmt.Errorf("%s tried to create a new cap table for rocket %s, but the rocket mind reports no such rocket exists", event.ID, unmarshalled.RocketID)
+	if rocketName, ok = library.GetOpData(event); !ok {
+		return nil, fmt.Errorf("no valid operation found 678yug")
+	}
+	if founder, ok = rockets.NamesAndFounders()[rocketName]; !ok {
+		return m, fmt.Errorf("%s tried to create a new cap table for rocket %s, but the rocket mind reports no such rocket exists", event.ID, rocketName)
 	}
 	if founder != event.PubKey {
-		return m, fmt.Errorf("%s tried to create a new cap table for rocket %s, but the rocket is owned by %s", event.ID, unmarshalled.RocketID, founder)
+		return m, fmt.Errorf("%s tried to create a new cap table for rocket %s, but the rocket is owned by %s", event.ID, rocketName, founder)
 	}
-	if err = makeNewCapTable(unmarshalled.RocketID); err != nil {
-		return m, fmt.Errorf("%s tried to create a new cap table for rocket %s, but %s", event.ID, unmarshalled.RocketID, err.Error())
+	if err := makeNewCapTable(rocketName); err != nil {
+		return m, fmt.Errorf("%s tried to create a new cap table for rocket %s, but %s", event.ID, rocketName, err.Error())
 	}
-	d := currentState[unmarshalled.RocketID]
+	d := currentState[rocketName]
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 	d.data[event.PubKey] = Merit{
@@ -56,7 +65,7 @@ func handle640208(event nostr.Event) (m Mapped, err error) {
 		LastLtChange:           0, //todo current bitcoin height
 		LeadTimeUnlockedMerits: 0,
 	}
-	currentState[unmarshalled.RocketID] = d
-	//d.persistToDisk()
+	currentState[rocketName] = d
 	return getMapped(), nil
+
 }
