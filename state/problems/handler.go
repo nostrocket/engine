@@ -41,11 +41,90 @@ func handleByTags(event nostr.Event) (m Mapped, e error) {
 					//return handleCreationEvent(event)
 				case o == "modify":
 					return handleContent(event)
+				case o == "claim" || o == "abandon" || o == "close" || o == "open":
+					return handleMetaActions(event, o)
 				}
 			}
 		}
 	}
 	return nil, fmt.Errorf("no valid operation found 543c2345")
+}
+
+func handleMetaActions(event nostr.Event, action string) (m Mapped, e error) {
+	if !identity.IsUSH(event.PubKey) {
+		return nil, fmt.Errorf("pubkey %s is not in the Identity Tree", event.PubKey)
+	}
+	var currentProblem Problem
+	currentProblemID, ok := library.GetOpData(event)
+	if !ok {
+		var problemIDsFoundInTags []string
+		for _, s := range library.GetAllReplies(event) {
+			if problem, ok := currentState.data[s]; ok {
+				problemIDsFoundInTags = append(problemIDsFoundInTags, s)
+				currentProblem = problem
+			}
+		}
+		if len(problemIDsFoundInTags) != 1 {
+			return nil, fmt.Errorf("exactly one problem must be tagged but event %s has tagged %d problem(s)", event.ID, len(problemIDsFoundInTags))
+		}
+	}
+	if ok {
+		if problem, ok := currentState.data[currentProblemID]; ok {
+			currentProblem = problem
+		} else {
+			return nil, fmt.Errorf("exactly one valid problem must be tagged but event %s has tagged none", event.ID)
+		}
+	}
+	var updates = 0
+	switch action {
+	case "claim":
+		if hasOpenChildren(currentProblem.UID) {
+			return nil, fmt.Errorf("cannot claim a problem that has open children, event ID %s", event.ID)
+		}
+		if !currentProblem.Closed && len(currentProblem.ClaimedBy) == 0 {
+			currentProblem.ClaimedBy = event.PubKey
+			//todo add bitcoin height to currentProblem.ClaimedAt
+			updates++
+		}
+	case "abandon":
+		if len(currentProblem.ClaimedBy) != 64 {
+			return nil, fmt.Errorf("cannot abandon a problem that has not been claimed, event ID %s", event.ID)
+		}
+		if currentProblem.ClaimedBy != event.PubKey && !identity.IsMaintainer(event.PubKey) {
+			return nil, fmt.Errorf("cannot abandon a problem unless signed by problem creator or a maintainer, event ID %s", event.ID)
+		}
+		currentProblem.ClaimedBy = ""
+		currentProblem.ClaimedAt = 0
+		updates++
+	case "close":
+		if hasOpenChildren(currentProblem.UID) {
+			return nil, fmt.Errorf("cannot close a problem that has open children, event ID %s", event.ID)
+		}
+		if !identity.IsMaintainer(event.PubKey) && currentProblem.CreatedBy != event.PubKey {
+			return nil, fmt.Errorf("cannot close a problem unless signed by problem creator or a maintainer, event ID %s", event.ID)
+		}
+		if currentProblem.Closed {
+			return nil, fmt.Errorf("cannot close a problem that is already closed, event ID %s", event.ID)
+		}
+		currentProblem.Closed = true
+		updates++
+	case "open":
+		if currentProblem.ClaimedBy != event.PubKey && !identity.IsMaintainer(event.PubKey) {
+			return nil, fmt.Errorf("cannot re-open a closed problem unless signed by problem creator or a maintainer, event ID %s", event.ID)
+		}
+		if !currentProblem.Closed {
+			return nil, fmt.Errorf("cannot re-open a problem that is not closed, event ID %s", event.ID)
+		}
+		currentProblem.Closed = false
+		updates++
+	default:
+		return nil, fmt.Errorf("invalid operation on event %s", event.ID)
+	}
+	if updates == 0 {
+		return nil, fmt.Errorf("event %s did not cause a state change 7y894j5j", event.ID)
+	}
+	currentState.upsert(currentProblem.UID, currentProblem)
+	return getMap(), nil
 }
 
 func handleMetadata(event nostr.Event) (m Mapped, e error) {
