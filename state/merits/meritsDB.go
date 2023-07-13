@@ -65,11 +65,11 @@ func start(ready chan struct{}) {
 	//	actors.LogCLI(err.Error(), 0)
 	//}
 	//}
-	err := makeNewCapTable("nostrocket")
+	err := makeNewCapTable(actors.IgnitionRocketID)
 	if err != nil {
 		actors.LogCLI(err.Error(), 0)
 	}
-	d := currentState["nostrocket"]
+	d := currentState[actors.IgnitionRocketID]
 	d.mutex.Lock()
 
 	d.data[actors.IgnitionAccount] = Merit{
@@ -78,10 +78,10 @@ func start(ready chan struct{}) {
 		LastLtChange:           0,
 		LeadTimeUnlockedMerits: 0,
 	}
-	currentState["nostrocket"] = d
+	currentState[actors.IgnitionRocketID] = d
 	if debug {
-		fmt.Println(currentState["nostrocket"].data)
-		currentState["nostrocket"].data["7543214dd1afe9b89d9bcd9d3b64d4596b9bdeb9385e95dabc242608de401099"] = Merit{
+		fmt.Println(currentState[actors.IgnitionRocketID].data)
+		currentState[actors.IgnitionRocketID].data["7543214dd1afe9b89d9bcd9d3b64d4596b9bdeb9385e95dabc242608de401099"] = Merit{
 			LeadTimeLockedMerits:   10,
 			LeadTime:               1,
 			LastLtChange:           0,
@@ -101,14 +101,14 @@ func start(ready chan struct{}) {
 	actors.LogCLI("Merits Mind has shut down", 4)
 }
 
-func makeNewCapTable(name library.RocketName) error {
-	if table, exists := currentState[name]; exists {
+func makeNewCapTable(rocketID library.Sha256) error {
+	if table, exists := currentState[rocketID]; exists {
 		if len(table.data) > 0 {
 			return fmt.Errorf("this cap table already exists")
 		}
 	}
-	currentState[name] = db{
-		rocketID: name,
+	currentState[rocketID] = db{
+		rocketID: rocketID,
 		data:     make(map[library.Account]Merit),
 		mutex:    &deadlock.Mutex{},
 	}
@@ -128,9 +128,9 @@ func getMapped() Mapped {
 
 func VotepowerForAccount(account library.Account) int64 {
 	startDb()
-	currentState["nostrocket"].mutex.Lock()
-	defer currentState["nostrocket"].mutex.Unlock()
-	if merits, ok := currentState["nostrocket"].data[account]; ok {
+	currentState[actors.IgnitionRocketID].mutex.Lock()
+	defer currentState[actors.IgnitionRocketID].mutex.Unlock()
+	if merits, ok := currentState[actors.IgnitionRocketID].data[account]; ok {
 		return merits.LeadTime * merits.LeadTimeLockedMerits
 	}
 	return 0
@@ -138,9 +138,9 @@ func VotepowerForAccount(account library.Account) int64 {
 
 func TotalVotepower() (int64, error) {
 	startDb()
-	currentState["nostrocket"].mutex.Lock()
-	defer currentState["nostrocket"].mutex.Unlock()
-	if data, ok := currentState["nostrocket"]; ok {
+	currentState[actors.IgnitionRocketID].mutex.Lock()
+	defer currentState[actors.IgnitionRocketID].mutex.Unlock()
+	if data, ok := currentState[actors.IgnitionRocketID]; ok {
 		var total int64
 		for _, share := range data.data {
 			total = total + (share.LeadTimeLockedMerits * share.LeadTime)
@@ -171,8 +171,8 @@ func Permille(signed, total int64) (int64, error) {
 
 func GetPosition(account library.Account) int64 {
 	startDb()
-	currentState["nostrocket"].mutex.Lock()
-	defer currentState["nostrocket"].mutex.Unlock()
+	currentState[actors.IgnitionRocketID].mutex.Lock()
+	defer currentState[actors.IgnitionRocketID].mutex.Unlock()
 	return getPostion(account)
 }
 
@@ -182,12 +182,12 @@ func getPostion(account library.Account) int64 {
 		votepower int64
 	}
 	m := getMapped()
-	if d, ok := m["nostrocket"]; ok {
-		for l, share := range d {
+	if d, ok := m[actors.IgnitionRocketID]; ok {
+		for l, merit := range d {
 			merits = append(merits, struct {
 				acc       library.Account
 				votepower int64
-			}{acc: l, votepower: share.LeadTime * share.LeadTimeLockedMerits})
+			}{acc: l, votepower: merit.LeadTime * merit.LeadTimeLockedMerits})
 		}
 	}
 	sort.Slice(merits, func(i, j int) bool {
@@ -206,7 +206,7 @@ func getPostion(account library.Account) int64 {
 
 func GetMapped() Mapped {
 	startDb()
-	currentState["nostrocket"].mutex.Lock()
-	defer currentState["nostrocket"].mutex.Unlock()
+	currentState[actors.IgnitionRocketID].mutex.Lock()
+	defer currentState[actors.IgnitionRocketID].mutex.Unlock()
 	return getMapped()
 }

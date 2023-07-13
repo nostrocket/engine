@@ -7,12 +7,12 @@ import (
 )
 
 type db struct {
-	data  map[library.RocketName]Rocket
+	data  map[library.Sha256]Rocket
 	mutex *deadlock.Mutex
 }
 
 var currentState = db{
-	data:  make(map[library.RocketName]Rocket),
+	data:  make(map[library.Sha256]Rocket),
 	mutex: &deadlock.Mutex{},
 }
 
@@ -43,12 +43,14 @@ func start(ready chan struct{}) {
 	//if ok {
 	//	currentState.restoreFromDisk(c)
 	//}
-	if _, exists := currentState.data["nostrocket"]; !exists {
-		currentState.data["nostrocket"] = Rocket{
-			RocketName: "nostrocket",
-			CreatedBy:  actors.IgnitionAccount,
-			ProblemID:  actors.IgnitionEvent,
-		}
+	var masterocket = Rocket{
+		RocketUID:  actors.IgnitionRocketID,
+		RocketName: "nostrocket",
+		CreatedBy:  actors.IgnitionAccount,
+		ProblemID:  actors.IgnitionEvent,
+	}
+	if _, exists := currentState.data[masterocket.RocketUID]; !exists {
+		currentState.data[masterocket.RocketUID] = masterocket
 	}
 	//currentState.persistToDisk()
 	close(ready)

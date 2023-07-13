@@ -41,22 +41,22 @@ func handleByTags(event nostr.Event) (m Mapped, e error) {
 }
 
 func handleRegistration(event nostr.Event) (m Mapped, e error) {
-	var rocketName string
+	var rocketID string
 	var founder library.Account
 	var ok bool
-	if rocketName, ok = library.GetOpData(event); !ok {
+	if rocketID, ok = library.GetOpData(event); !ok {
 		return nil, fmt.Errorf("no valid operation found 678yug")
 	}
-	if founder, ok = rockets.NamesAndFounders()[rocketName]; !ok {
-		return m, fmt.Errorf("%s tried to create a new cap table for rocket %s, but the rocket mind reports no such rocket exists", event.ID, rocketName)
+	if founder, ok = rockets.NamesAndFounders()[rocketID]; !ok {
+		return m, fmt.Errorf("%s tried to create a new cap table for rocket %s, but the rocket mind reports no such rocket exists", event.ID, rocketID)
 	}
 	if founder != event.PubKey {
-		return m, fmt.Errorf("%s tried to create a new cap table for rocket %s, but the rocket is owned by %s", event.ID, rocketName, founder)
+		return m, fmt.Errorf("%s tried to create a new cap table for rocket %s, but the rocket is owned by %s", event.ID, rocketID, founder)
 	}
-	if err := makeNewCapTable(rocketName); err != nil {
-		return m, fmt.Errorf("%s tried to create a new cap table for rocket %s, but %s", event.ID, rocketName, err.Error())
+	if err := makeNewCapTable(rocketID); err != nil {
+		return m, fmt.Errorf("%s tried to create a new cap table for rocket %s, but %s", event.ID, rocketID, err.Error())
 	}
-	d := currentState[rocketName]
+	d := currentState[rocketID]
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 	d.data[event.PubKey] = Merit{
@@ -65,7 +65,7 @@ func handleRegistration(event nostr.Event) (m Mapped, e error) {
 		LastLtChange:           0, //todo current bitcoin height
 		LeadTimeUnlockedMerits: 0,
 	}
-	currentState[rocketName] = d
+	currentState[rocketID] = d
 	return getMapped(), nil
 
 }

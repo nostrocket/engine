@@ -10,6 +10,7 @@ import (
 //Ignition
 const IgnitionEvent string = "1bf16cac62588cfd7e3c336b8548fa49a09627f03dbf06c7a4fee27bc01972c8"
 const IgnitionAccount library.Account = "546b4d7f86fe2c1fcc7eb10bf96c2eaef1daa26c67dad348ff0e9c853ffe8882"
+const IgnitionRocketID library.Sha256 = "041b8698b3b7206feca17c89f3f861c31d82dc2fdf3f1d0f25c3bddfa68c64e2"
 
 //Anchors for incoming event trees
 const StateChangeRequests string = "120205879a8d9a38adcb794f7cbff3872c4117a7bb7e86672484f6dee7d6b1c6"
