@@ -109,7 +109,7 @@ func handleMetaActions(event nostr.Event, action string) (m Mapped, e error) {
 		currentProblem.Closed = true
 		updates++
 	case "open":
-		if currentProblem.ClaimedBy != event.PubKey && !identity.IsMaintainer(event.PubKey) {
+		if currentProblem.CreatedBy != event.PubKey && !identity.IsMaintainer(event.PubKey) {
 			return nil, fmt.Errorf("cannot re-open a closed problem unless signed by problem creator or a maintainer, event ID %s", event.ID)
 		}
 		if !currentProblem.Closed {
