@@ -99,7 +99,7 @@ func GetMap() Mapped {
 }
 
 func getMap() Mapped {
-	m := make(map[library.RocketName]Rocket)
+	m := make(map[library.RocketID]Rocket)
 	for key, val := range currentState.data {
 		m[key] = val
 	}

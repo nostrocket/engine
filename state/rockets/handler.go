@@ -140,11 +140,11 @@ func handleLinkRocketToProblem(event nostr.Event) (m Mapped, e error) {
 //if err := json.Unmarshal([]byte(opData), &unmarshalled); err != nil {
 //return m, fmt.Errorf("%s reported for event %s", err.Error(), event.ID)
 //}
-//if _, exists := NamesAndFounders()[unmarshalled.RocketName]; exists {
-//return nil, fmt.Errorf("event %s requests creation of new rocket \"%s\" but this name is already taken", event.ID, unmarshalled.RocketName)
+//if _, exists := RocketCreators()[unmarshalled.RocketID]; exists {
+//return nil, fmt.Errorf("event %s requests creation of new rocket \"%s\" but this name is already taken", event.ID, unmarshalled.RocketID)
 //}
-//currentState.upsert(unmarshalled.RocketName, Rocket{
-//RocketName:  unmarshalled.RocketName,
+//currentState.upsert(unmarshalled.RocketID, Rocket{
+//RocketID:  unmarshalled.RocketID,
 //CreatedBy: event.PubKey,
 //ProblemID: unmarshalled.Problem,
 //})

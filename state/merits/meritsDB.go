@@ -13,12 +13,12 @@ import (
 )
 
 type db struct {
-	rocketID library.RocketName
+	rocketID library.RocketID
 	data     map[library.Account]Merit
 	mutex    *deadlock.Mutex
 }
 
-var currentState = make(map[library.RocketName]db)
+var currentState = make(map[library.RocketID]db)
 var currentStateMu = &deadlock.Mutex{}
 
 var started = false
@@ -32,7 +32,7 @@ func startDb() {
 	defer available.Unlock()
 	if !started {
 		started = true
-		for s, _ := range rockets.NamesAndFounders() {
+		for s, _ := range rockets.RocketCreators() {
 			currentState[s] = db{
 				rocketID: s,
 				data:     make(map[library.Account]Merit),
@@ -53,18 +53,6 @@ func startDb() {
 func start(ready chan struct{}) {
 	// We add a delta to the provided waitgroup so that upstream knows when the database has been safely shut down
 	actors.GetWaitGroup().Add(1)
-	//k640208 := Kind640208{RocketName: "nostrocket"}
-	//j, err := json.Marshal(k640208)
-	//if err != nil {
-	//	actors.LogCLI(err.Error(), 0)
-	//}
-	//if _, err := handle640208(nostr.Event{
-	//	PubKey:  actors.IgnitionAccount,
-	//	Content: fmt.Sprintf("%s", j),
-	//}); err != nil {
-	//	actors.LogCLI(err.Error(), 0)
-	//}
-	//}
 	err := makeNewCapTable(actors.IgnitionRocketID)
 	if err != nil {
 		actors.LogCLI(err.Error(), 0)
@@ -116,7 +104,7 @@ func makeNewCapTable(rocketID library.Sha256) error {
 }
 
 func getMapped() Mapped {
-	mOuter := make(map[library.RocketName]map[library.Account]Merit)
+	mOuter := make(map[library.RocketID]map[library.Account]Merit)
 	for id, d := range currentState {
 		mOuter[id] = make(map[library.Account]Merit)
 		for account, share := range d.data {

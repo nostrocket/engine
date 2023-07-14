@@ -47,7 +47,7 @@ func handleRegistration(event nostr.Event) (m Mapped, e error) {
 	if rocketID, ok = library.GetOpData(event); !ok {
 		return nil, fmt.Errorf("no valid operation found 678yug")
 	}
-	if founder, ok = rockets.NamesAndFounders()[rocketID]; !ok {
+	if founder, ok = rockets.RocketCreators()[rocketID]; !ok {
 		return m, fmt.Errorf("%s tried to create a new cap table for rocket %s, but the rocket mind reports no such rocket exists", event.ID, rocketID)
 	}
 	if founder != event.PubKey {
@@ -60,6 +60,7 @@ func handleRegistration(event nostr.Event) (m Mapped, e error) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 	d.data[event.PubKey] = Merit{
+		RocketID:               rocketID,
 		LeadTimeLockedMerits:   1,
 		LeadTime:               1,
 		LastLtChange:           0, //todo current bitcoin height

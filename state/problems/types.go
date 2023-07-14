@@ -15,4 +15,4 @@ type Problem struct {
 	CreatedBy library.Account
 }
 
-type Mapped map[library.RocketName]Problem
+type Mapped map[library.RocketID]Problem
