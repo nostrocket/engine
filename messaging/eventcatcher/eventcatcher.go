@@ -5,11 +5,13 @@ import (
 	"time"
 
 	"github.com/nbd-wtf/go-nostr"
+	"github.com/prashantgupta24/mac-sleep-notifier/notifier"
 	"nostrocket/engine/actors"
 	"nostrocket/engine/library"
 )
 
 func SubscribeToTree(eChan chan nostr.Event, sendChan chan nostr.Event, eose chan bool) {
+	sleepChan := notifier.GetInstance().Start() //sleep.GetInstance().Start() //sleep.PingWhenSleep()
 	relay, err := nostr.RelayConnect(context.Background(), actors.MakeOrGetConfig().GetStringSlice("relaysMust")[0])
 	if err != nil {
 		panic(err)
@@ -57,6 +59,12 @@ func SubscribeToTree(eChan chan nostr.Event, sendChan chan nostr.Event, eose cha
 L:
 	for {
 		select {
+		case <-sleepChan:
+			go func() {
+				actors.LogCLI("system sleep detected, terminating application", 2)
+				cancel()
+				actors.Shutdown()
+			}()
 		case ev := <-sub.Events:
 			//fmt.Println(ev.ID)
 			sane := library.ValidateSaneExecutionTime()

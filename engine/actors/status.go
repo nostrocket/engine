@@ -1,6 +1,9 @@
 package actors
 
 import (
+	"os"
+	"time"
+
 	"github.com/sasha-s/go-deadlock"
 )
 
@@ -16,6 +19,10 @@ func GetTerminateChan() chan struct{} {
 
 func Shutdown() {
 	close(terminateChan)
+	go func() {
+		time.Sleep(time.Second * 10)
+		os.Exit(1)
+	}()
 }
 
 var waitGroup *deadlock.WaitGroup
