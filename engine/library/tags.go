@@ -1,6 +1,8 @@
 package library
 
 import (
+	"strings"
+
 	"github.com/nbd-wtf/go-nostr"
 )
 
@@ -41,11 +43,20 @@ func GetAllReplies(e nostr.Event) (r []string) {
 	return
 }
 
-func GetOpData(e nostr.Event) (string, bool) {
+func GetOpData(e nostr.Event, opcode string) (string, bool) {
 	for _, tag := range e.Tags {
 		if tag.StartsWith([]string{"op"}) {
 			if len(tag) > 2 {
-				return tag[len(tag)-1], true
+				if len(opcode) > 0 {
+					ops := strings.Split(tag[1], ".")
+					for _, op := range ops {
+						if op == opcode {
+							return tag[len(tag)-1], true
+						}
+					}
+				} else {
+					return tag[len(tag)-1], true
+				}
 			}
 
 		}

@@ -17,6 +17,7 @@ type Merit struct {
 
 //Request STATUS:DRAFT
 type Request struct {
+	CreatedBy         library.Account
 	RocketID          library.RocketID
 	UID               library.Sha256
 	Problem           library.Sha256 //ID of problem in the problem tracker (optional)

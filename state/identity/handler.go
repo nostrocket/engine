@@ -43,7 +43,7 @@ func handleUsh(event nostr.Event) (m Mapped, e error) {
 	if len(proposerIdentity.UniqueSovereignBy) == 0 {
 		return nil, fmt.Errorf("proposer is not in the identity tree")
 	}
-	targetIdentity, ok := library.GetOpData(event)
+	targetIdentity, ok := library.GetOpData(event, "")
 	if !ok {
 		return nil, fmt.Errorf("event does not contain the pubkey of a target account")
 	}
@@ -75,7 +75,7 @@ func handleUsh(event nostr.Event) (m Mapped, e error) {
 func handlePermanym(event nostr.Event) (m Mapped, e error) {
 	existingIdentity := getLatestIdentity(event.PubKey)
 	if len(existingIdentity.Name) == 0 {
-		if permanym, ok := library.GetOpData(event); ok {
+		if permanym, ok := library.GetOpData(event, ""); ok {
 			if len(permanym) < 21 {
 				err := existingIdentity.addName(permanym)
 				if err != nil {

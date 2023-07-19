@@ -46,7 +46,7 @@ func handleByTags(event nostr.Event) (m Mapped, e error) {
 func handleNewRocketName(event nostr.Event) (m Mapped, e error) {
 	var rocketName string
 	var ok bool
-	if rocketName, ok = library.GetOpData(event); !ok {
+	if rocketName, ok = library.GetOpData(event, ""); !ok {
 		return nil, fmt.Errorf("no valid operation found s45454")
 	}
 	if existing, exists := findRocketByName(rocketName); exists {
@@ -114,7 +114,7 @@ func handleLinkRocketToProblem(event nostr.Event) (m Mapped, e error) {
 	if existingRocket.CreatedBy != event.PubKey {
 		return nil, fmt.Errorf("event %s refers to a rocket which is not owned by the same pubkey as this event", event.ID)
 	}
-	if problemUID, ok = library.GetOpData(event); !ok {
+	if problemUID, ok = library.GetOpData(event, ""); !ok {
 		return nil, fmt.Errorf("no valid operation found 645rty")
 	}
 	if problem, exists := problems.GetMap()[problemUID]; !exists {

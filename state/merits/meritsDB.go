@@ -198,3 +198,16 @@ func GetMapped() Mapped {
 	defer currentState[actors.IgnitionRocketID].mutex.Unlock()
 	return getMapped()
 }
+
+func findMeritRequestByProblemID(problemID string) (Request, bool) {
+	for _, d := range currentState {
+		for _, merit := range d.data {
+			for _, request := range merit.Requests {
+				if request.Problem == problemID {
+					return request, true
+				}
+			}
+		}
+	}
+	return Request{}, false
+}

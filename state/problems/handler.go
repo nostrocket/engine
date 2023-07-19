@@ -55,7 +55,7 @@ func handleMetaActions(event nostr.Event, action string) (m Mapped, e error) {
 		return nil, fmt.Errorf("pubkey %s is not in the Identity Tree", event.PubKey)
 	}
 	var currentProblem Problem
-	currentProblemID, ok := library.GetOpData(event)
+	currentProblemID, ok := library.GetOpData(event, "")
 	if !ok {
 		var problemIDsFoundInTags []string
 		for _, s := range library.GetAllReplies(event) {

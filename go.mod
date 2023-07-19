@@ -7,6 +7,7 @@ require (
 	github.com/eiannone/keyboard v0.0.0-20220611211555-0d226195f203
 	github.com/mborders/logmatic v0.4.0
 	github.com/nbd-wtf/go-nostr v0.15.1
+	github.com/prashantgupta24/mac-sleep-notifier v1.0.1
 	github.com/sasha-s/go-deadlock v0.3.1
 	github.com/spf13/viper v1.15.0
 )
