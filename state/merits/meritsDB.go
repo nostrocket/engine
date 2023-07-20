@@ -118,10 +118,35 @@ func VotepowerForAccount(account library.Account) int64 {
 	startDb()
 	currentState[actors.IgnitionRocketID].mutex.Lock()
 	defer currentState[actors.IgnitionRocketID].mutex.Unlock()
-	if merits, ok := currentState[actors.IgnitionRocketID].data[account]; ok {
-		return merits.LeadTime * merits.LeadTimeLockedMerits
+	v, _ := computeVotepower(account, actors.IgnitionRocketID)
+	return v
+}
+
+func GetPermille(account library.Account, rocket library.RocketID) (int64, error) {
+	return Permille(computeVotepower(account, rocket))
+}
+
+func computeVotepower(account library.Account, rocketID library.RocketID) (a int64, total int64) {
+	startDb()
+	if len(rocketID) != 64 {
+		rocketID = actors.IgnitionRocketID
 	}
-	return 0
+	if rocketDb, ok := currentState[rocketID]; ok {
+		for _, merit := range rocketDb.data {
+			total = total + (merit.LeadTimeLockedMerits * merit.LeadTime)
+		}
+		if total > (9223372036854775807 / 5) {
+			actors.LogCLI("we are 20% of the way to an overflow bug", 1)
+		}
+		if total > (9223372036854775807 / 2) {
+			actors.LogCLI("we are 50%% of the way to an overflow bug", 0)
+			actors.Shutdown()
+		}
+		if merits, ok := rocketDb.data[account]; ok {
+			return merits.LeadTime * merits.LeadTimeLockedMerits, total
+		}
+	}
+	return 0, total
 }
 
 func TotalVotepower() (int64, error) {
@@ -210,4 +235,16 @@ func findMeritRequestByProblemID(problemID string) (Request, bool) {
 		}
 	}
 	return Request{}, false
+}
+
+func getNth(rocketID library.RocketID) int64 {
+	var latest int64
+	for _, merit := range currentState[rocketID].data {
+		for _, request := range merit.Requests {
+			if request.Nth > latest {
+				latest = request.Nth
+			}
+		}
+	}
+	return latest + 1
 }
