@@ -188,6 +188,8 @@ func handleNewMeritRequest(event nostr.Event) (m Mapped, e error) {
 		Amount:       amount,
 		RepaidAmount: 0,
 		WitnessedAt:  0, //todo add current Bitcoin height
+		Ratifiers:    make(map[library.Account]struct{}),
+		Blackballers: make(map[library.Account]struct{}),
 	}
 	existingMeritData.Requests = append(existingMeritData.Requests, request)
 	currentState[existingMeritData.RocketID].data[event.PubKey] = existingMeritData
