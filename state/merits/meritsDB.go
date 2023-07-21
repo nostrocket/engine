@@ -219,8 +219,8 @@ func getPostion(account library.Account) int64 {
 
 func GetMapped() Mapped {
 	startDb()
-	currentState[actors.IgnitionRocketID].mutex.Lock()
-	defer currentState[actors.IgnitionRocketID].mutex.Unlock()
+	currentStateMu.Lock()
+	defer currentStateMu.Unlock()
 	return getMapped()
 }
 
