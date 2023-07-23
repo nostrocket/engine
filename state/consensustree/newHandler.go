@@ -59,7 +59,7 @@ func handleNewConsensusEvent(unmarshalled Kind640001, e nostr.Event, scEvent cha
 				cPublish <- helpers.DeleteEvent(e.ID, "invalid checkpoint detected")
 				actors.LogCLI(fmt.Sprintf("attempting to delete consensus event created %f seconds ago", time.Since(e.CreatedAt).Seconds()), 2)
 			}
-			return fmt.Errorf("trying to parse %s at height %d, but we already have a checkpoint for %s at height %d", unmarshalled.StateChangeEventID, unmarshalled.Height, c.StateChangeEventID, c.StateChangeEventHeight)
+			return fmt.Errorf("trying to parse %s at height %d created %f hours ago, but we already have a checkpoint for %s at height %d", unmarshalled.StateChangeEventID, unmarshalled.Height, time.Since(e.CreatedAt).Hours(), c.StateChangeEventID, c.StateChangeEventHeight)
 		}
 	}
 	var current map[library.Sha256]TreeEvent

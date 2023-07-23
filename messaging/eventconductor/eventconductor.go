@@ -75,7 +75,6 @@ func handleEvents() {
 			case <-eoseChan:
 				eose = true
 			case event := <-eventChan:
-				//fmt.Println(event.ID)
 				if !addEventToCache(event) {
 					if event.Kind == 640001 && !eventIsInState(event.ID) {
 						actors.LogCLI(fmt.Sprintf("consensus event from relay: %s", event.ID), 4)
@@ -155,11 +154,19 @@ func handleConsensusEvent(e nostr.Event) error {
 				fmt.Printf("\nCONSENSUS EVENT TO PUBLISH:\n%#v\n", e)
 				Publish(e)
 			case e := <-toHandle:
-				time.Sleep(time.Millisecond * 200)
 				event, ok := getEventFromCache(e)
 				if !ok {
-					actors.LogCLI("could not get event "+e, 2)
-					returnResult <- false
+					time.Sleep(time.Millisecond * 500)
+					event, ok = getEventFromCache(e)
+					if !ok {
+						ev, fetchok := eventcatcher.FetchCache(e)
+						event = *ev
+						if !fetchok {
+							actors.LogCLI("could not get event "+e, 2)
+							returnResult <- false
+						}
+						ok = true
+					}
 				}
 				if ok {
 					if err := handleEvent(event, true); err != nil {

@@ -6,9 +6,26 @@ import (
 
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/prashantgupta24/mac-sleep-notifier/notifier"
+	"github.com/sasha-s/go-deadlock"
 	"nostrocket/engine/actors"
 	"nostrocket/engine/library"
 )
+
+var cache = make(map[string]nostr.Event)
+var cacheMu = &deadlock.Mutex{}
+
+func pushCache(e nostr.Event) {
+	cacheMu.Lock()
+	defer cacheMu.Unlock()
+	cache[e.ID] = e
+}
+
+func FetchCache(id string) (e *nostr.Event, r bool) {
+	cacheMu.Lock()
+	defer cacheMu.Unlock()
+	ev, re := cache[id]
+	return &ev, re
+}
 
 func SubscribeToTree(eChan chan nostr.Event, sendChan chan nostr.Event, eose chan bool) {
 	sleepChan := notifier.GetInstance().Start() //sleep.GetInstance().Start() //sleep.PingWhenSleep()
@@ -84,6 +101,7 @@ L:
 					lastEventTime = time.Now()
 					if ev.Kind != 21069 { //ev.Kind >= 640000 && ev.Kind <= 649999 {
 						if ok, _ := ev.CheckSignature(); ok {
+							pushCache(*ev)
 							eChan <- *ev
 						}
 					}
