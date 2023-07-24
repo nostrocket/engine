@@ -35,7 +35,7 @@ func handleByTags(event nostr.Event) (m Mapped, e error) {
 			}
 		}
 	}
-	return nil, fmt.Errorf("no valid operation found 543c2345")
+	return nil, fmt.Errorf("no valid operation found 4356vg4")
 }
 
 func handleUsh(event nostr.Event) (m Mapped, e error) {

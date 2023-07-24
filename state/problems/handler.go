@@ -7,6 +7,7 @@ import (
 	"github.com/nbd-wtf/go-nostr"
 	"nostrocket/engine/actors"
 	"nostrocket/engine/library"
+	"nostrocket/state"
 	"nostrocket/state/identity"
 )
 
@@ -14,6 +15,9 @@ func HandleEvent(event nostr.Event) (m Mapped, e error) {
 	startDb()
 	currentState.mutex.Lock()
 	defer currentState.mutex.Unlock()
+	if !identity.IsUSH(event.PubKey) {
+		return nil, fmt.Errorf("event %s is not signed by someone in the identity tree", event.ID)
+	}
 	switch event.Kind {
 	case 1:
 		return handleByTags(event)
@@ -34,8 +38,6 @@ func handleByTags(event nostr.Event) (m Mapped, e error) {
 					return handleModification(event)
 				case o == "claim" || o == "abandon" || o == "close" || o == "open":
 					return handleMetaActions(event, o)
-				case o == "tag":
-
 				}
 			}
 		}
@@ -44,9 +46,6 @@ func handleByTags(event nostr.Event) (m Mapped, e error) {
 }
 
 func handleMetaActions(event nostr.Event, action string) (m Mapped, e error) {
-	if !identity.IsUSH(event.PubKey) {
-		return nil, fmt.Errorf("pubkey %s is not in the Identity Tree", event.PubKey)
-	}
 	var currentProblem Problem
 	currentProblemID, ok := library.GetOpData(event, "")
 	if !ok {
@@ -122,36 +121,61 @@ func handleMetaActions(event nostr.Event, action string) (m Mapped, e error) {
 
 func handleModification(event nostr.Event) (m Mapped, e error) {
 	var updates int64 = 0
+	var currentProblem Problem
+	var found = false
 	if anchor, ok := library.GetFirstReply(event); ok {
-		if identity.IsUSH(event.PubKey) {
-			if currentProblem, problemExists := currentState.data[anchor]; problemExists {
-				if currentProblem.CreatedBy == event.PubKey || identity.IsMaintainer(event.PubKey) {
-					if len(event.Content) > 0 && event.Content != currentProblem.Body && event.Kind == 641802 {
-						currentProblem.Body = event.Content
-						updates++
-					}
-					if description, ok := library.GetFirstTag(event, "description"); ok {
-						if currentProblem.Body != description && len(description) > 0 {
-							currentProblem.Body = description
-							updates++
-						}
-					}
-					if title, ok := library.GetFirstTag(event, "title"); ok {
-						if currentProblem.Title != title && len(title) > 0 {
-							currentProblem.Title = title
-							updates++
-						}
-					}
-					//if data, exists := library.GetOpData(event, "tag"); exists {
-					//
-					//}
-					if updates > 0 {
-						currentState.upsert(currentProblem.UID, currentProblem)
-						return getMap(), nil
-					}
+		if currentP, problemExists := currentState.data[anchor]; problemExists {
+			currentProblem = currentP
+			found = true
+		}
+	}
+	if anchor, ok := library.GetOpData(event, "target"); ok {
+		if currentP, problemExists := currentState.data[anchor]; problemExists {
+			currentProblem = currentP
+			found = true
+		}
+	}
+	if !found {
+		return nil, fmt.Errorf("could not find a target problem ID in event %s", event.ID)
+	}
+
+	if !(currentProblem.CreatedBy == event.PubKey || identity.IsMaintainer(event.PubKey)) {
+		return nil, fmt.Errorf("pubkey not authorised to modify problem ID in event %s", event.ID)
+	}
+	if len(event.Content) > 0 && event.Content != currentProblem.Body && event.Kind == 641802 {
+		currentProblem.Body = event.Content
+		updates++
+	}
+	if description, ok := library.GetFirstTag(event, "description"); ok {
+		if currentProblem.Body != description && len(description) > 0 {
+			currentProblem.Body = description
+			currentProblem.Body = description
+			updates++
+		}
+	}
+	if title, ok := library.GetFirstTag(event, "title"); ok {
+		if currentProblem.Title != title && len(title) > 0 {
+			currentProblem.Title = title
+			updates++
+		}
+	}
+	if data, exists := library.GetOpData(event, "tag"); exists {
+		fmt.Println(data)
+		if len(data) == 64 {
+			if rocket, ok := state.Rockets()[data]; ok {
+				if rocket.CreatedBy == event.PubKey || data == currentState.data[currentProblem.Parent].Rocket {
+					currentProblem.Rocket = data
+					updates++
 				}
+			} else {
+				currentProblem.Tags[data] = "" //todo query tags and insert tag name
+				updates++
 			}
 		}
+	}
+	if updates > 0 {
+		currentState.upsert(currentProblem.UID, currentProblem)
+		return getMap(), nil
 	}
 	return nil, fmt.Errorf("no state changed")
 }
@@ -168,12 +192,10 @@ func handleNewAnchor(event nostr.Event) (m Mapped, e error) {
 			return insertProblemAnchor(event, actors.Problems1)
 		}
 		if _, exists := currentState.data[event.ID]; !exists {
-			if identity.IsUSH(event.PubKey) {
-				if parentProblem, parentExists := currentState.data[parent]; parentExists {
-					if !parentProblem.Closed {
-						if len(parentProblem.ClaimedBy) == 0 || parentProblem.ClaimedBy == event.PubKey {
-							return insertProblemAnchor(event, parent)
-						}
+			if parentProblem, parentExists := currentState.data[parent]; parentExists {
+				if !parentProblem.Closed {
+					if len(parentProblem.ClaimedBy) == 0 || parentProblem.ClaimedBy == event.PubKey {
+						return insertProblemAnchor(event, parent)
 					}
 				}
 			}
@@ -195,11 +217,13 @@ func insertProblemAnchor(event nostr.Event, parent library.Sha256) (m Mapped, e 
 			title = t
 		}
 	}
-
 	if len(title) == 0 && len(event.Content) <= 100 {
 		title = event.Content
 	}
-
+	rocket := currentState.data[parent].Rocket
+	if len(rocket) != 64 {
+		rocket = actors.IgnitionRocketID
+	}
 	p := Problem{
 		UID:       event.ID,
 		Parent:    parent,
@@ -209,6 +233,8 @@ func insertProblemAnchor(event nostr.Event, parent library.Sha256) (m Mapped, e 
 		ClaimedAt: 0,
 		ClaimedBy: "",
 		CreatedBy: event.PubKey,
+		Tags:      make(map[library.Sha256]string),
+		Rocket:    rocket,
 	}
 	currentState.upsert(p.UID, p)
 	return getMap(), nil

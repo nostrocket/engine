@@ -14,7 +14,7 @@ type Problem struct {
 	ClaimedBy library.Account
 	CreatedBy library.Account
 	Rocket    library.RocketID
-	Tags      []string
+	Tags      map[library.Sha256]string
 }
 
 type Mapped map[library.RocketID]Problem
