@@ -88,7 +88,7 @@ func cliListener(interrupt chan struct{}) {
 				fmt.Printf("\nUID: %s\nPARENT: %s\nTITLE: %s\nBODY: %s\nCREATED BY: %s\n\n", problem.UID, problem.Parent, problem.Title, problem.Body, problem.CreatedBy)
 			}
 		case "f":
-			currentState := actors.CurrentStateMap()
+			currentState := actors.GetCurrentStateMap()
 			if currentState.Identity == nil {
 				currentState.Identity = identity.GetMap()
 			}

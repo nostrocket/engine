@@ -13,6 +13,8 @@ type Problem struct {
 	ClaimedAt int64 //block height
 	ClaimedBy library.Account
 	CreatedBy library.Account
+	Rocket    library.RocketID
+	Tags      []string
 }
 
 type Mapped map[library.RocketID]Problem

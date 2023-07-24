@@ -12,18 +12,9 @@ import (
 
 func HandleEvent(event nostr.Event) (m Mapped, e error) {
 	startDb()
-	if sig, _ := event.CheckSignature(); !sig {
-		return
-	}
 	currentState.mutex.Lock()
 	defer currentState.mutex.Unlock()
 	switch event.Kind {
-	case 641800:
-		return handleNewAnchor(event)
-	case 641802:
-		return handleContent(event)
-	case 641804:
-		return handleMetadata(event)
 	case 1:
 		return handleByTags(event)
 	}
@@ -40,9 +31,11 @@ func handleByTags(event nostr.Event) (m Mapped, e error) {
 					return handleNewAnchor(event)
 					//return handleCreationEvent(event)
 				case o == "modify":
-					return handleContent(event)
+					return handleModification(event)
 				case o == "claim" || o == "abandon" || o == "close" || o == "open":
 					return handleMetaActions(event, o)
+				case o == "tag":
+
 				}
 			}
 		}
@@ -127,58 +120,7 @@ func handleMetaActions(event nostr.Event, action string) (m Mapped, e error) {
 	return getMap(), nil
 }
 
-func handleMetadata(event nostr.Event) (m Mapped, e error) {
-	if anchor, ok := library.GetFirstReply(event); ok {
-		if currentProblem, problemExists := currentState.data[anchor]; problemExists {
-			if identity.IsUSH(event.PubKey) {
-				var updates int64 = 0
-				if claim, ok := library.GetFirstTag(event, "claim"); ok {
-					if claim == "claim" {
-						if !currentProblem.Closed && len(currentProblem.ClaimedBy) == 0 && !hasOpenChildren(anchor) {
-							currentProblem.ClaimedBy = event.PubKey
-							//todo add bitcoin height to currentProblem.ClaimedAt
-							updates++
-						}
-					}
-					if claim == "abandon" {
-						if currentProblem.ClaimedBy == event.PubKey ||
-							identity.IsMaintainer(event.PubKey) &&
-								len(currentProblem.ClaimedBy) == 64 {
-							currentProblem.ClaimedBy = ""
-							currentProblem.ClaimedAt = 0
-							updates++
-						}
-					}
-				}
-				if _close, ok := library.GetFirstTag(event, "close"); ok {
-					if currentProblem.CreatedBy == event.PubKey || identity.IsMaintainer(event.PubKey) {
-						if _close == "close" {
-							if !hasOpenChildren(currentProblem.UID) {
-								if !currentProblem.Closed {
-									currentProblem.Closed = true
-									updates++
-								}
-							}
-						}
-						if _close == "open" {
-							if currentProblem.Closed {
-								currentProblem.Closed = false
-								updates++
-							}
-						}
-					}
-				}
-				if updates > 0 {
-					currentState.upsert(currentProblem.UID, currentProblem)
-					return getMap(), nil
-				}
-			}
-		}
-	}
-	return nil, fmt.Errorf("no state changed")
-}
-
-func handleContent(event nostr.Event) (m Mapped, e error) {
+func handleModification(event nostr.Event) (m Mapped, e error) {
 	var updates int64 = 0
 	if anchor, ok := library.GetFirstReply(event); ok {
 		if identity.IsUSH(event.PubKey) {
@@ -200,6 +142,9 @@ func handleContent(event nostr.Event) (m Mapped, e error) {
 							updates++
 						}
 					}
+					//if data, exists := library.GetOpData(event, "tag"); exists {
+					//
+					//}
 					if updates > 0 {
 						currentState.upsert(currentProblem.UID, currentProblem)
 						return getMap(), nil
@@ -212,8 +157,6 @@ func handleContent(event nostr.Event) (m Mapped, e error) {
 }
 
 func handleNewAnchor(event nostr.Event) (m Mapped, e error) {
-	//fmt.Printf("%#v", event)
-	//var updates int64 = 0
 	if parent, ok := library.GetFirstReply(event); ok {
 		//exception for ignition problem
 		if len(currentState.data) == 0 && event.PubKey == actors.IgnitionAccount && parent == actors.Problems {

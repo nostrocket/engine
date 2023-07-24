@@ -57,7 +57,7 @@ func CurrentStateEventBuilder(state string) nostr.Event {
 	return e
 }
 
-func CurrentStateMap() CurrentState {
+func GetCurrentStateMap() CurrentState {
 	currentState.mu.Lock()
 	defer currentState.mu.Unlock()
 	return currentState

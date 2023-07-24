@@ -1,18 +1,17 @@
 package rockets
 
 import (
+	"github.com/sasha-s/go-deadlock"
 	"nostrocket/engine/library"
+	"nostrocket/state"
 )
 
-type Rocket struct {
-	RocketUID  library.Sha256
-	RocketName library.RocketID
-	CreatedBy  library.Account
-	ProblemID  library.Sha256
-	MissionID  library.Sha256
+type RocketData struct {
+	data  map[library.Sha256]state.Rocket
+	mutex *deadlock.Mutex
 }
 
-type Mapped map[library.RocketID]Rocket
+type Mapped map[library.RocketID]state.Rocket
 
 //Kind640600 STATUS:DRAFT
 type Kind640600 struct {

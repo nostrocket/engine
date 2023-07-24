@@ -3,18 +3,8 @@ package rockets
 import (
 	"github.com/sasha-s/go-deadlock"
 	"nostrocket/engine/actors"
-	"nostrocket/engine/library"
+	"nostrocket/state"
 )
-
-type db struct {
-	data  map[library.Sha256]Rocket
-	mutex *deadlock.Mutex
-}
-
-var currentState = db{
-	data:  make(map[library.Sha256]Rocket),
-	mutex: &deadlock.Mutex{},
-}
 
 var started = false
 var available = &deadlock.Mutex{}
@@ -38,92 +28,35 @@ func startDb() {
 func start(ready chan struct{}) {
 	// We add a delta to the provided waitgroup so that upstream knows when the database has been safely shut down
 	actors.GetWaitGroup().Add(1)
-	// Load current shares from disk
-	//c, ok := actors.Open("mirvs", "current")
-	//if ok {
-	//	currentState.restoreFromDisk(c)
-	//}
-	var masterocket = Rocket{
+	var masterocket = state.Rocket{
 		RocketUID:  actors.IgnitionRocketID,
 		RocketName: "nostrocket",
 		CreatedBy:  actors.IgnitionAccount,
 		ProblemID:  actors.IgnitionEvent,
 	}
-	if _, exists := currentState.data[masterocket.RocketUID]; !exists {
-		currentState.data[masterocket.RocketUID] = masterocket
+	if _, err := state.Upsert(masterocket); err != nil {
+		actors.LogCLI(err.Error(), 0)
 	}
-	//currentState.persistToDisk()
 	close(ready)
 	<-actors.GetTerminateChan()
-	currentState.mutex.Lock()
-	defer currentState.mutex.Unlock()
-	//b, err := json.MarshalIndent(currentState.data, "", " ")
-	//if err != nil {
-	//	library.LogCLI(err.Error(), 0)
-	//}
-	//actors.Write("mirvs", "current", b)
-	//currentState.persistToDisk()
 	actors.GetWaitGroup().Done()
 	actors.LogCLI("Rockets Mind has shut down", 4)
 }
 
-//func (s *db) restoreFromDisk(f *os.File) {
-//	s.mutex.Lock()
-//	err := json.NewDecoder(f).Decode(&s.data)
-//	if err != nil {
-//		if err.Error() != "EOF" {
-//			library.LogCLI(err.Error(), 0)
-//		}
-//	}
-//	s.mutex.Unlock()
-//	err = f.Close()
-//	if err != nil {
-//		library.LogCLI(err.Error(), 0)
-//	}
-//}
-//
-//// persistToDisk persists the current state to disk
-//func (s *db) persistToDisk() {
-//	b, err := json.MarshalIndent(s.data, "", " ")
-//	if err != nil {
-//		library.LogCLI(err.Error(), 0)
-//	}
-//	actors.Write("mirvs", "current", b)
-//}
-
-func GetMap() Mapped {
-	startDb()
-	currentState.mutex.Lock()
-	defer currentState.mutex.Unlock()
-	return getMap()
-}
-
-func getMap() Mapped {
-	m := make(map[library.RocketID]Rocket)
-	for key, val := range currentState.data {
-		m[key] = val
-	}
-	return m
-}
-
-func (s *db) upsert(key library.Sha256, val Rocket) {
-	s.data[key] = val
-}
-
-func findRocketByProblemUID(problemUID string) (Rocket, bool) {
-	for _, rocket := range currentState.data {
+func findRocketByProblemUID(problemUID string) (state.Rocket, bool) {
+	for _, rocket := range state.Rockets() {
 		if rocket.ProblemID == problemUID {
 			return rocket, true
 		}
 	}
-	return Rocket{}, false
+	return state.Rocket{}, false
 }
 
-func findRocketByName(name string) (Rocket, bool) {
-	for _, rocket := range currentState.data {
+func findRocketByName(name string) (state.Rocket, bool) {
+	for _, rocket := range state.Rockets() {
 		if rocket.RocketName == name {
 			return rocket, true
 		}
 	}
-	return Rocket{}, false
+	return state.Rocket{}, false
 }
