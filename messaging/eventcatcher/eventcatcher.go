@@ -2,6 +2,7 @@ package eventcatcher
 
 import (
 	"context"
+	"runtime"
 	"time"
 
 	"github.com/nbd-wtf/go-nostr"
@@ -28,7 +29,15 @@ func FetchCache(id string) (e *nostr.Event, r bool) {
 }
 
 func SubscribeToTree(eChan chan nostr.Event, sendChan chan nostr.Event, eose chan bool) {
-	sleepChan := notifier.GetInstance().Start() //sleep.GetInstance().Start() //sleep.PingWhenSleep()
+	var sleepChan = make(chan bool)
+	if runtime.GOOS == "darwin" {
+		sleepNotifier := notifier.GetInstance().Start() //sleep.GetInstance().Start() //sleep.PingWhenSleep()
+		go func() {
+			<-sleepNotifier
+			sleepChan <- true
+		}()
+	}
+
 	relay, err := nostr.RelayConnect(context.Background(), actors.MakeOrGetConfig().GetStringSlice("relaysMust")[0])
 	if err != nil {
 		panic(err)
