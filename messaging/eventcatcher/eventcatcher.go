@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/nbd-wtf/go-nostr"
-	"github.com/prashantgupta24/mac-sleep-notifier/notifier"
 	"github.com/sasha-s/go-deadlock"
 	"nostrocket/engine/actors"
 	"nostrocket/engine/library"
@@ -31,13 +30,8 @@ func FetchCache(id string) (e *nostr.Event, r bool) {
 func SubscribeToTree(eChan chan nostr.Event, sendChan chan nostr.Event, eose chan bool) {
 	var sleepChan = make(chan bool)
 	if runtime.GOOS == "darwin" {
-		sleepNotifier := notifier.GetInstance().Start() //sleep.GetInstance().Start() //sleep.PingWhenSleep()
-		go func() {
-			<-sleepNotifier
-			sleepChan <- true
-		}()
+		sleeper(sleepChan)
 	}
-
 	relay, err := nostr.RelayConnect(context.Background(), actors.MakeOrGetConfig().GetStringSlice("relaysMust")[0])
 	if err != nil {
 		panic(err)
