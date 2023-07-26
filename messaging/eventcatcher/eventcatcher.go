@@ -17,6 +17,7 @@ func pushCache(e nostr.Event) {
 	cacheMu.Lock()
 	defer cacheMu.Unlock()
 	cache[e.ID] = e
+	publishToBackupRelay(e)
 }
 
 func FetchCache(id string) (e *nostr.Event, r bool) {
@@ -24,6 +25,41 @@ func FetchCache(id string) (e *nostr.Event, r bool) {
 	defer cacheMu.Unlock()
 	ev, re := cache[id]
 	return &ev, re
+}
+
+func publishToBackupRelay(event nostr.Event) {
+	if !backupStarted {
+		backupStarted = true
+		startBackupRelay()
+	}
+	go func() {
+		backupSendChan <- event
+	}()
+}
+
+var backupStarted = false
+var backupSendChan = make(chan nostr.Event)
+
+func startBackupRelay() {
+	relay, err := nostr.RelayConnect(context.Background(), "ws://127.0.0.1:45321")
+	if err == nil {
+		go func() {
+			for {
+				select {
+				case e := <-backupSendChan:
+					go func() {
+						sane := library.ValidateSaneExecutionTime()
+						_, err := relay.Publish(context.Background(), e)
+						if err != nil {
+							actors.LogCLI(err.Error(), 2)
+						}
+						sane()
+					}()
+				}
+			}
+		}()
+	}
+	return
 }
 
 func SubscribeToTree(eChan chan nostr.Event, sendChan chan nostr.Event, eose chan bool) {

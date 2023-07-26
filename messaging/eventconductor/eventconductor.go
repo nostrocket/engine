@@ -123,6 +123,9 @@ func handleEvents() {
 func processStateChangeEventOutOfConsensus(event *nostr.Event) error {
 	sane := library.ValidateSaneExecutionTime()
 	defer sane()
+	if time.Since(event.CreatedAt) > time.Hour*24 {
+		return fmt.Errorf("we are probably missing a consensus event")
+	}
 	err := handleEvent(*event, false)
 	if err == nil {
 		consensusEvent, err := consensustree.CreateNewConsensusEvent(*event)

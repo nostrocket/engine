@@ -7,7 +7,7 @@ import (
 )
 
 func sleeper(listen chan bool) {
-	sleepNotifier := notifier.GetInstance().Start() //sleep.GetInstance().Start() //sleep.PingWhenSleep()
+	sleepNotifier := notifier.GetInstance().Start()
 	go func() {
 		<-sleepNotifier
 		listen <- true
