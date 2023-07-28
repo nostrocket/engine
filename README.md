@@ -1,7 +1,7 @@
 # Nostrocket Engine
 Problem: can't reach consensus about the current state of Nostrocket and Subrockets
 
-This repo doesn't have an issue tracker because we are using Nostrocket to track problems. Please view the problem tracker using [Spacemen](nostrocket.github.io/spaceman)
+This repo doesn't have an issue tracker because we are using Nostrocket to track problems. Please view the problem tracker using [Spacemen](https://nostrocket.github.io/spaceman/)
 
 ### Nostrocket Engine is a replicated state machine built with Nostr and Bitcoin.
 
