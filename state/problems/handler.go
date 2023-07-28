@@ -160,7 +160,6 @@ func handleModification(event nostr.Event) (m Mapped, e error) {
 		}
 	}
 	if data, exists := library.GetOpData(event, "tag"); exists {
-		fmt.Println(data)
 		if len(data) == 64 {
 			if rocket, ok := state.Rockets()[data]; ok {
 				if rocket.CreatedBy == event.PubKey || data == currentState.data[currentProblem.Parent].Rocket {

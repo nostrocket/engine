@@ -31,11 +31,40 @@ func handleByTags(event nostr.Event) (m Mapped, e error) {
 					return handlePermanym(event)
 				case o == "ush":
 					return handleUsh(event)
+				case o == "maintainer":
+					return handleMaintainer(event)
 				}
 			}
 		}
 	}
 	return nil, fmt.Errorf("no valid operation found 4356vg4")
+}
+
+func handleMaintainer(event nostr.Event) (m Mapped, e error) {
+	proposerIdentity := getLatestIdentity(event.PubKey)
+	if len(proposerIdentity.MaintainerBy) == 0 {
+		return nil, fmt.Errorf("proposer is not in the maintainer tree")
+	}
+	targetIdentityID, ok := library.GetOpData(event, "")
+	if !ok {
+		return nil, fmt.Errorf("event does not contain the pubkey of a target account")
+	}
+	if len(targetIdentityID) != 64 {
+		return nil, fmt.Errorf("invalid pubkey for target account")
+	}
+	targetIdentityObject := getLatestIdentity(targetIdentityID)
+	if len(targetIdentityObject.Name) == 0 {
+		return nil, fmt.Errorf("target account does not have a permanym")
+	}
+	if len(targetIdentityObject.UniqueSovereignBy) != 64 {
+		return nil, fmt.Errorf("target account is not in the identity tree")
+	}
+	targetIdentityObject.MaintainerBy = event.PubKey
+	err := targetIdentityObject.upsert(targetIdentityObject.Account)
+	if err != nil {
+		return nil, err
+	}
+	return getMap(), nil
 }
 
 func handleUsh(event nostr.Event) (m Mapped, e error) {
