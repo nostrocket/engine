@@ -12,13 +12,13 @@ import (
 	"nostrocket/state/rockets"
 )
 
-type db struct {
+type meritsForRocket struct {
 	rocketID library.RocketID
 	data     map[library.Account]Merit
 	mutex    *deadlock.Mutex
 }
 
-var currentState = make(map[library.RocketID]db)
+var currentState = make(map[library.RocketID]meritsForRocket)
 var currentStateMu = &deadlock.Mutex{}
 
 var started = false
@@ -33,7 +33,7 @@ func startDb() {
 	if !started {
 		started = true
 		for s, _ := range rockets.RocketCreators() {
-			currentState[s] = db{
+			currentState[s] = meritsForRocket{
 				rocketID: s,
 				data:     make(map[library.Account]Merit),
 				mutex:    &deadlock.Mutex{},
@@ -74,7 +74,6 @@ func start(ready chan struct{}) {
 			LeadTime:               1,
 			LastLtChange:           0,
 			LeadTimeUnlockedMerits: 0,
-			OpReturnAddresses:      nil,
 		}
 	}
 	d.mutex.Unlock()
@@ -95,7 +94,7 @@ func makeNewCapTable(rocketID library.Sha256) error {
 			return fmt.Errorf("this cap table already exists")
 		}
 	}
-	currentState[rocketID] = db{
+	currentState[rocketID] = meritsForRocket{
 		rocketID: rocketID,
 		data:     make(map[library.Account]Merit),
 		mutex:    &deadlock.Mutex{},

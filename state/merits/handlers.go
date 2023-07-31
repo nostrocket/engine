@@ -143,7 +143,6 @@ func getExistingMeritData(event nostr.Event, targetPubkey library.Account) (m Me
 			LeadTime:               0,
 			LastLtChange:           0, //todo use current bitcoin height
 			LeadTimeUnlockedMerits: 0,
-			OpReturnAddresses:      []string{},
 			Requests:               []Request{},
 		}
 	}
@@ -181,15 +180,16 @@ func handleNewMeritRequest(event nostr.Event) (m Mapped, e error) {
 		return nil, fmt.Errorf("%s tried to create a new merit request but the problem specified has been used in merit request %s", event.ID, existingWithThisProblem.UID)
 	}
 	var request = Request{
-		CreatedBy:    event.PubKey,
-		RocketID:     existingMeritData.RocketID,
-		UID:          event.ID,
-		Problem:      problemID,
-		Amount:       amount,
-		RepaidAmount: 0,
-		WitnessedAt:  0, //todo add current Bitcoin height
-		Ratifiers:    make(map[library.Account]struct{}),
-		Blackballers: make(map[library.Account]struct{}),
+		CreatedBy:         event.PubKey,
+		OwnedBy:           event.PubKey,
+		RocketID:          existingMeritData.RocketID,
+		UID:               event.ID,
+		Problem:           problemID,
+		Amount:            amount,
+		RemuneratedAmount: 0,
+		WitnessedAt:       0, //todo add current Bitcoin height
+		Ratifiers:         make(map[library.Account]struct{}),
+		Blackballers:      make(map[library.Account]struct{}),
 	}
 	existingMeritData.Requests = append(existingMeritData.Requests, request)
 	currentState[existingMeritData.RocketID].data[event.PubKey] = existingMeritData
