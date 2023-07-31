@@ -41,8 +41,8 @@ func cliListener(interrupt chan struct{}) {
 				fmt.Printf("\nTotal Votepower: %d\n", vp)
 				for account, share := range m2 {
 					pm, _ := merits.Permille(merits.VotepowerForAccount(account), vp)
-					fmt.Printf("\nAccount: %s\nLeadTimeLockedMerits: %d\nLeadTime: %d\nLastLeadTimeChange: %d\nLeadTimeUnlockedMerits: %d\nOpReturnAddresses: %s\nVotepower: %d Permille: %d\n",
-						account, share.LeadTimeLockedMerits, share.LeadTime, share.LeadTimeUnlockedMerits, share.LastLtChange, share.OpReturnAddresses, merits.VotepowerForAccount(account), pm)
+					fmt.Printf("\nAccount: %s\nLeadTimeLockedMerits: %d\nLeadTime: %d\nLastLeadTimeChange: %d\nLeadTimeUnlockedMerits: %d\nVotepower: %d Permille: %d\n",
+						account, share.LeadTimeLockedMerits, share.LeadTime, share.LeadTimeUnlockedMerits, share.LastLtChange, merits.VotepowerForAccount(account), pm)
 				}
 				fmt.Printf("\n--------- End of data for: %s -----------\n\n", id)
 			}
