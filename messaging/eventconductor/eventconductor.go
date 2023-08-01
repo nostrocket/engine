@@ -274,8 +274,8 @@ func handleEvent(e nostr.Event, fromConsensusEvent bool) error {
 			newReplayState := <-replayState
 			close(replayState)
 			actors.LogCLI(fmt.Sprintf("State of %s has been updated by %s [consensus mode: %v]", mindName, e.ID, fromConsensusEvent), 3)
-			actors.AppendState("replay", newReplayState)
-			n, _ := actors.AppendState(mindName, mappedState)
+			AppendState("replay", newReplayState)
+			n, _ := AppendState(mindName, mappedState)
 			b, err := json.Marshal(n)
 			if err != nil {
 				return err
@@ -284,7 +284,7 @@ func handleEvent(e nostr.Event, fromConsensusEvent bool) error {
 				//publish our current state
 				//todo only publish if we are at the current bitcoin tip
 				if !fromConsensusEvent {
-					stateEvent := actors.CurrentStateEventBuilder(fmt.Sprintf("%s", b))
+					stateEvent := CurrentStateEventBuilder(fmt.Sprintf("%s", b))
 					Publish(stateEvent)
 					actors.LogCLI(fmt.Sprintf("Published current state in event %s", stateEvent.ID), 4)
 					time.Sleep(time.Second)

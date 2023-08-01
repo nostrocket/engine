@@ -17,7 +17,7 @@ import (
 
 var lock = &deadlock.Mutex{}
 
-func HandleEvent(event nostr.Event) (m any, e error) {
+func HandleEvent(event nostr.Event) (m Mapped, e error) {
 	startDb()
 	if !identity.IsUSH(event.PubKey) {
 		return nil, fmt.Errorf("event %s: pubkey %s not in identity tree", event.ID, event.PubKey)
@@ -25,7 +25,15 @@ func HandleEvent(event nostr.Event) (m any, e error) {
 	lock.Lock()
 	defer lock.Unlock()
 	if event.Kind == 1 {
-		return handleEventByTags(event)
+		result, err := handleEventByTags(event)
+		if err != nil {
+			return nil, err
+		}
+		m = make(Mapped)
+		for sha256, rocket := range result.(map[library.Sha256]state.Rocket) {
+			m[sha256] = rocket
+		}
+		return
 	}
 	return m, fmt.Errorf("event %s did not cause a state change", event.ID)
 }

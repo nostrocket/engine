@@ -88,21 +88,29 @@ func cliListener(interrupt chan struct{}) {
 				fmt.Printf("\nUID: %s\nPARENT: %s\nTITLE: %s\nBODY: %s\nCREATED BY: %s\n\n", problem.UID, problem.Parent, problem.Title, problem.Body, problem.CreatedBy)
 			}
 		case "f":
-			currentState := actors.GetCurrentStateMap()
+			currentState := eventconductor.GetCurrentStateMap()
 			if currentState.Identity == nil {
 				currentState.Identity = identity.GetMap()
 			}
 			if currentState.Replay == nil {
 				currentState.Replay = replay.GetMap()
 			}
-			fmt.Printf("\n%#v\n", currentState)
-			b, err := json.Marshal(currentState)
+			wire := currentState.Wire()
+			fmt.Printf("\n%#v\n", wire)
+			b, err := json.Marshal(wire)
 			if err != nil {
 				actors.LogCLI(err, 2)
 			} else {
-				eventconductor.Publish(actors.CurrentStateEventBuilder(fmt.Sprintf("%s", b)))
+				eventconductor.Publish(eventconductor.CurrentStateEventBuilder(fmt.Sprintf("%s", b)))
+			}
+		case "o":
+			cs := eventconductor.GetCurrentStateMap()
+			wire := cs.Wire()
+			for id, rocket := range wire.Rockets {
+				fmt.Printf("\n%s\n%#v\n", id, rocket.Products)
 			}
 
+			fmt.Printf("\n%#v\n", wire.Payments.Products)
 		}
 	}
 }

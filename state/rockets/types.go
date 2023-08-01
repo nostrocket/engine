@@ -7,7 +7,7 @@ import (
 )
 
 type RocketData struct {
-	data  map[library.Sha256]state.Rocket
+	data  Mapped
 	mutex *deadlock.Mutex
 }
 
