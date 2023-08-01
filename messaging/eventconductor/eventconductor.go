@@ -14,6 +14,7 @@ import (
 	"nostrocket/state/consensustree"
 	"nostrocket/state/identity"
 	"nostrocket/state/merits"
+	"nostrocket/state/payments"
 	"nostrocket/state/problems"
 	"nostrocket/state/replay"
 	"nostrocket/state/rockets"
@@ -356,6 +357,9 @@ func routeEvent(e nostr.Event) (mindName string, newState any, err error) {
 					case o == "rockets":
 						mindName = "rockets"
 						newState, err = rockets.HandleEvent(e)
+					case o == "payments":
+						mindName = "payments"
+						newState, err = payments.HandleEvent(e)
 					}
 				}
 			}
