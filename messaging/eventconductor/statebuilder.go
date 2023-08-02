@@ -30,12 +30,13 @@ func (c *CurrentState) Wire() (w WireState) {
 	w.Rockets = make(MappedRockets)
 	for id, r := range c.Rockets {
 		newRocket := Rocket{
-			RocketUID:  r.RocketUID,
-			RocketName: r.RocketName,
-			CreatedBy:  r.CreatedBy,
-			ProblemID:  r.ProblemID,
-			MissionID:  r.MissionID,
-			Products:   []payments.Product{},
+			RocketUID:   r.RocketUID,
+			RocketName:  r.RocketName,
+			CreatedBy:   r.CreatedBy,
+			ProblemID:   r.ProblemID,
+			MissionID:   r.MissionID,
+			Maintainers: r.Maintainers,
+			Products:    []payments.Product{},
 		}
 		if d, exists := c.Payments.Products[id]; exists {
 			for _, product := range d {
@@ -55,16 +56,18 @@ type WireState struct {
 	Problems any             `json:"problems"`
 	Payments payments.Mapped `json:"payments"`
 }
+
 type MappedRockets map[library.RocketID]Rocket
 
 type Rocket struct {
-	RocketUID  library.Sha256
-	RocketName string
-	CreatedBy  library.Account
-	ProblemID  library.Sha256
-	MissionID  library.Sha256
-	Products   []payments.Product
-	Payments   []payments.PaymentRequest
+	RocketUID   library.Sha256
+	RocketName  string
+	CreatedBy   library.Account
+	ProblemID   library.Sha256
+	MissionID   library.Sha256
+	Products    []payments.Product
+	Payments    []payments.PaymentRequest
+	Maintainers []library.Account
 }
 
 var currentState = CurrentState{
