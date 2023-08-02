@@ -100,10 +100,12 @@ func handleNewRocketName(event nostr.Event) (m any, e error) {
 			event.ID, rocketName, problemID, problemAdoptedByRocket.RocketName)
 	}
 	return state.Upsert(state.Rocket{
-		ProblemID:  problemID,
-		RocketUID:  event.ID,
-		RocketName: rocketName,
-		CreatedBy:  event.PubKey})
+		ProblemID:   problemID,
+		RocketUID:   event.ID,
+		RocketName:  rocketName,
+		CreatedBy:   event.PubKey,
+		Maintainers: []library.Account{event.PubKey},
+	})
 }
 
 //

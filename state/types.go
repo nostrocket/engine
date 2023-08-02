@@ -5,11 +5,12 @@ import (
 )
 
 type Rocket struct {
-	RocketUID  library.Sha256
-	RocketName string
-	CreatedBy  library.Account
-	ProblemID  library.Sha256
-	MissionID  library.Sha256
+	RocketUID   library.Sha256
+	RocketName  string
+	CreatedBy   library.Account
+	ProblemID   library.Sha256
+	MissionID   library.Sha256
+	Maintainers []library.Account
 }
 
 var rockets = make(map[library.Sha256]Rocket)
