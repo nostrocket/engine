@@ -10,13 +10,33 @@ import (
 
 func HandleEvent(event nostr.Event) (m Mapped, e error) {
 	startDb()
+	currentState.mutex.Lock()
+	defer currentState.mutex.Unlock()
 	if sig, _ := event.CheckSignature(); !sig {
 		return
 	}
-	if event.Kind == 1 {
+	switch event.Kind {
+	case 1:
 		return handleByTags(event)
+	case 0:
+		return handleKind0(event)
 	}
 	return m, fmt.Errorf("event %s did not cause a state change", event.ID)
+}
+
+func handleKind0(event nostr.Event) (m Mapped, e error) {
+	if !isUSH(event.PubKey) {
+		return m, fmt.Errorf("account does not exist in USH tree")
+	}
+	existingIdentity := getLatestIdentity(event.PubKey)
+	if event.CreatedAt.After(existingIdentity.LatestKind0.CreatedAt) {
+		existingIdentity.LatestKind0 = event
+		if err := existingIdentity.upsert(event.PubKey); err != nil {
+			return m, err
+		}
+		return getMap(), nil
+	}
+	return m, fmt.Errorf("already have kind0 that is newer")
 }
 
 func handleByTags(event nostr.Event) (m Mapped, e error) {
@@ -24,8 +44,6 @@ func handleByTags(event nostr.Event) (m Mapped, e error) {
 		ops := strings.Split(operation, ".")
 		if len(ops) > 2 {
 			if ops[1] == "identity" {
-				currentState.mutex.Lock()
-				defer currentState.mutex.Unlock()
 				switch o := ops[2]; {
 				case o == "permanym":
 					return handlePermanym(event)

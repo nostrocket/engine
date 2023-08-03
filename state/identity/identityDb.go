@@ -1,6 +1,9 @@
 package identity
 
 import (
+	"encoding/json"
+	"net/mail"
+
 	"github.com/sasha-s/go-deadlock"
 	"nostrocket/engine/actors"
 	"nostrocket/engine/library"
@@ -116,6 +119,8 @@ func getMap() Mapped {
 
 func IsMaintainer(account library.Account) bool {
 	startDb()
+	currentState.mutex.Lock()
+	defer currentState.mutex.Unlock()
 	id := getLatestIdentity(account)
 	if len(id.MaintainerBy) > 0 {
 		return true
@@ -125,6 +130,12 @@ func IsMaintainer(account library.Account) bool {
 
 func IsUSH(account library.Account) bool {
 	startDb()
+	currentState.mutex.Lock()
+	defer currentState.mutex.Unlock()
+	return isUSH(account)
+}
+
+func isUSH(account library.Account) bool {
 	id := getLatestIdentity(account)
 	if len(id.UniqueSovereignBy) > 0 {
 		return true
@@ -135,4 +146,37 @@ func IsUSH(account library.Account) bool {
 func (s *db) upsert(account library.Account, identity Identity) {
 	identity.Account = account
 	s.data[account] = identity
+}
+
+func GetLightningAddress(account library.Account) (string, bool) {
+	currentState.mutex.Lock()
+	defer currentState.mutex.Unlock()
+	if data, ok := currentState.data[account]; ok {
+		if len(data.LatestKind0.Content) > 0 {
+			var profile Profile
+			err := json.Unmarshal([]byte(data.LatestKind0.Content), &profile)
+			if err == nil {
+				addr, err := mail.ParseAddress(profile.Lud16)
+				if err == nil {
+					return addr.String(), true
+				}
+			}
+		}
+	}
+	return "", false
+}
+
+type Profile struct {
+	Name         string `json:"name"`
+	Picture      string `json:"picture"`
+	About        string `json:"about"`
+	Website      string `json:"website"`
+	Banner       string `json:"banner"`
+	Username     string `json:"username"`
+	DisplayName  string `json:"display_name"`
+	DisplayName1 string `json:"displayName"`
+	Lud06        string `json:"lud06"`
+	Lud16        string `json:"lud16"`
+	Nip05        string `json:"nip05"`
+	Nip05Valid   bool   `json:"nip05valid"`
 }

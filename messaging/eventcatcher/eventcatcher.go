@@ -2,6 +2,7 @@ package eventcatcher
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/nbd-wtf/go-nostr"
@@ -62,6 +63,38 @@ func startBackupRelay() {
 	return
 }
 
+func fetchKind0(relay *nostr.Relay, accounts []library.Account, eChan chan nostr.Event) {
+	var filters = []nostr.Filter{{
+		Kinds: []int{0},
+	}}
+	if len(accounts) > 0 {
+		filters = []nostr.Filter{{
+			Kinds:   []int{0},
+			Authors: accounts,
+		}}
+		fmt.Printf("%#v", filters)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	sub := relay.Subscribe(ctx, filters)
+	go func() {
+		events := make(map[string]nostr.Event)
+		for {
+			select {
+			case ev := <-sub.Events:
+				events[ev.ID] = *ev
+				pushCache(*ev)
+			case <-time.After(time.Second * 30):
+				cancel()
+				for _, event := range events {
+					eChan <- event
+				}
+				return
+			}
+		}
+	}()
+}
+
 func SubscribeToTree(eChan chan nostr.Event, sendChan chan nostr.Event, eose chan bool) {
 	var sleepChan = make(chan bool)
 	sleeper(sleepChan)
@@ -77,17 +110,30 @@ func SubscribeToTree(eChan chan nostr.Event, sendChan chan nostr.Event, eose cha
 		//Kinds: []int{1},
 		//Authors: []string{pub},
 		Tags: tags,
-	},
-	}
+	}}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	actors.LogCLI("Connecting to "+relay.URL, 4)
 	sub := relay.Subscribe(ctx, filters)
 
+	go fetchKind0(relay, []string{}, eChan)
+
 	go func() {
 		for {
 			select {
 			case e := <-sendChan:
+				if e.Kind == 15171031 {
+					var accounts []string
+					for _, tag := range e.Tags {
+						if len(tag.Value()) == 64 {
+							accounts = append(accounts, tag.Value())
+						}
+					}
+					if len(accounts) > 0 {
+						go fetchKind0(relay, accounts, sendChan)
+					}
+					continue
+				}
 				if e.Kind == 21069 {
 					//fmt.Println("SENDING KEEPALIVE EVENT")
 				}
