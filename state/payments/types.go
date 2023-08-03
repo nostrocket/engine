@@ -20,6 +20,9 @@ type PaymentRequest struct {
 	PaidBy          library.Account
 	AmountPaid      int64
 	AmountRequired  int64
+	MeritHolder     library.Account
+	LUD16           string
+	Invoice         string
 }
 
 type productMap map[library.RocketID]map[library.Sha256]Product

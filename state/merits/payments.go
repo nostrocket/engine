@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"nostrocket/engine/library"
+	"nostrocket/state"
 )
 
 func GetNextPaymentAddress(RocketID library.RocketID, amount int64) (a library.Account, e error) {
@@ -26,6 +27,9 @@ func getNextPaymentAddress(RocketID library.RocketID, amount int64) (a library.A
 	account, ok = getNextDividendAddress(merits, amount)
 	if ok {
 		return account, nil
+	}
+	if len(state.Rockets()[RocketID].CreatedBy) == 64 {
+		return state.Rockets()[RocketID].CreatedBy, nil
 	}
 	return a, fmt.Errorf("could not find the next payment address")
 }

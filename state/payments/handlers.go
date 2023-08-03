@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"nostrocket/engine/actors"
 	"nostrocket/engine/library"
 	"nostrocket/state"
 	"nostrocket/state/identity"
@@ -94,6 +95,11 @@ func createProduct(event nostr.Event) (m Mapped, err error) {
 		ProductInformation: infoID,
 	}
 	products[rocketID] = existingRocketProducts
+	request, err := createPaymentRequest(existingRocketProducts[event.ID])
+	if err != nil {
+		actors.LogCLI(err.Error(), 1)
+	}
+	fmt.Printf("%#v", request)
 	return getMapped(), nil
 }
 
