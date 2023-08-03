@@ -99,6 +99,7 @@ func createProduct(event nostr.Event) (m Mapped, err error) {
 	if err != nil {
 		actors.LogCLI(err.Error(), 1)
 	}
+
 	fmt.Printf("%#v", request)
 	return getMapped(), nil
 }

@@ -1,7 +1,10 @@
 package payments
 
 import (
+	"fmt"
+
 	"nostrocket/engine/library"
+	"nostrocket/state/identity"
 	"nostrocket/state/merits"
 
 	"github.com/sasha-s/go-deadlock"
@@ -33,6 +36,18 @@ func createPaymentRequest(product Product) (p PaymentRequest, e error) {
 	p.AmountRequired = product.Amount
 	p.MeritHolder = address
 	p.ProductID = product.UID
+
+	address, ok := identity.GetLightningAddress(p.MeritHolder)
+	if !ok {
+		return p, fmt.Errorf("could not get lightning address from profile")
+	}
+	p.LUD16 = address
+
+	invoice, err := getInvoice(address, p.AmountRequired, p.ProductID)
+	if err != nil {
+		return PaymentRequest{}, err
+	}
+	p.Invoice = invoice
 	//fetch invoice
 	return
 }

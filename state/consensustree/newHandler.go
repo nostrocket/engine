@@ -38,7 +38,10 @@ func HandleConsensusEvent(e nostr.Event, scEvent chan library.Sha256, scResult c
 	if len(unmarshalled.StateChangeEventID) != 64 {
 		return fmt.Errorf("invalid state change event ID")
 	}
-	//if unmarshalled.StateChangeEventID == "eb3164f2a21684365a46a29450a6e718cb9899241b920531647746c0374eb426" {
+	//evts := []string{"01a54d0a709d1403f8ed72f885d364c72a3d424c6c276287e7c0e97f912e52ac", "c78cee0140edb012d568e07d9d3196be938e6331c1a1631b806df8eb7218b619", "e76a640498c658c8fe1be8409be2d9f37b8877ea733c0950169f813870ad2de3",
+	//	"b6c80cd7f3b7b93589753f72a7a949e855526a9d9253dcca2ecc126ad3d43530", "a4bfdfb0f9cc68ce28a77d6047fdddbaa46a7080fa81a4bb23fee9182799aa7b", "bc1930d0eb72804581ac62a1f2da299f18ccd0cc69abcef766696bbe02abb639",
+	//	"cfe472b1ad36c112b53554f4abc2b86f835452007574b64ae88b4c4f1167cb76", "8ed06bab252b449788c9c4bb7014aabbae920c019e35d5606e7fb13519ec42b7", "98b53354d8df014841237d83e2c91aa3a0f42c5ed330441d0dd405a096f9afca"}
+	//if slices.Contains(evts, unmarshalled.StateChangeEventID) {
 	//	cPublish <- helpers.DeleteEvent(e.ID, "invalid state change event")
 	//	return nil
 	//}

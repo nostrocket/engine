@@ -142,7 +142,7 @@ func processStateChangeEventOutOfConsensus(event *nostr.Event) error {
 		return fmt.Errorf("we are probably missing a consensus event")
 	}
 	err := handleEvent(*event, false)
-	if err == nil {
+	if err == nil && event.Kind != 0 {
 		consensusEvent, err := consensustree.CreateNewConsensusEvent(*event)
 		if err != nil {
 			return err
@@ -306,7 +306,7 @@ func handleEvent(e nostr.Event, fromConsensusEvent bool) error {
 	}
 	//publish our current state
 	//todo only publish if we are at the current bitcoin tip
-	if !fromConsensusEvent {
+	if !fromConsensusEvent && e.Kind != 0 {
 		stateEvent := CurrentStateEventBuilder(fmt.Sprintf("%s", b))
 		Publish(stateEvent)
 		actors.LogCLI(fmt.Sprintf("Published current state in event %s", stateEvent.ID), 4)
