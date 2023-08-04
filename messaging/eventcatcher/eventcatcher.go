@@ -63,6 +63,27 @@ func startBackupRelay() {
 	return
 }
 
+func FetchLatestKind0(accounts []library.Account) (nostr.Event, bool) {
+	eChan := make(chan nostr.Event)
+	fetchKind0(activeRelayConnection, accounts, eChan)
+	var latest nostr.Event
+	for {
+		select {
+		case <-time.After(time.Second * 10):
+			return nostr.Event{}, false
+		case e := <-eChan:
+			if e.CreatedAt.After(latest.CreatedAt) {
+				latest = e
+			}
+			if e.Kind == 21 {
+				if len(latest.PubKey) == 64 {
+					return latest, true
+				}
+			}
+		}
+	}
+}
+
 func fetchKind0(relay *nostr.Relay, accounts []library.Account, eChan chan nostr.Event) {
 	var filters = []nostr.Filter{{
 		Kinds: []int{0},
@@ -72,37 +93,60 @@ func fetchKind0(relay *nostr.Relay, accounts []library.Account, eChan chan nostr
 			Kinds:   []int{0},
 			Authors: accounts,
 		}}
-		fmt.Printf("%#v", filters)
+		//fmt.Printf("%#v", filters)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	sub := relay.Subscribe(ctx, filters)
 	go func() {
+		attempts := 0
 		events := make(map[string]nostr.Event)
 		for {
 			select {
 			case ev := <-sub.Events:
 				events[ev.ID] = *ev
 				pushCache(*ev)
-			case <-time.After(time.Second * 30):
-				cancel()
-				for _, event := range events {
-					eChan <- event
+			case <-time.After(time.Second * 2):
+				attempts++
+				if len(events) > 0 {
+					cancel()
+					for _, event := range events {
+						eChan <- event
+					}
+					eChan <- nostr.Event{
+						Kind: 21,
+					}
+					return
 				}
-				return
+				if attempts > 5 {
+					cancel()
+					return
+				}
 			}
 		}
 	}()
 }
 
+var activeRelayConnection *nostr.Relay
+var activeSendChan chan nostr.Event
+
+func PublishEvent(event nostr.Event) {
+	if ok, err := event.CheckSignature(); ok && err != nil {
+		go func() {
+			activeSendChan <- event
+		}()
+	}
+}
+
 func SubscribeToTree(eChan chan nostr.Event, sendChan chan nostr.Event, eose chan bool) {
+	activeSendChan = sendChan
 	var sleepChan = make(chan bool)
 	sleeper(sleepChan)
 	relay, err := nostr.RelayConnect(context.Background(), actors.MakeOrGetConfig().GetStringSlice("relaysMust")[0])
 	if err != nil {
-		panic(err)
+		actors.LogCLI(fmt.Sprintf("could not connect to relay: %s", err), 0)
 	}
-
+	activeRelayConnection = relay
 	tags := make(map[string][]string)
 	tags["e"] = []string{actors.IgnitionEvent}
 	var filters nostr.Filters
@@ -136,6 +180,9 @@ func SubscribeToTree(eChan chan nostr.Event, sendChan chan nostr.Event, eose cha
 				}
 				if e.Kind == 21069 {
 					//fmt.Println("SENDING KEEPALIVE EVENT")
+				}
+				if e.Kind == 3340 {
+					actors.LogCLI(fmt.Sprintf("publishing payment request event %s", e.ID), 4)
 				}
 				go func() {
 					sane := library.ValidateSaneExecutionTime()

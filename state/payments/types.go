@@ -23,6 +23,7 @@ type PaymentRequest struct {
 	MeritHolder     library.Account
 	LUD16           string
 	Invoice         string
+	PaymentHash     library.Sha256
 }
 
 type productMap map[library.RocketID]map[library.Sha256]Product

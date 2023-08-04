@@ -7,6 +7,7 @@ import (
 
 	"nostrocket/engine/actors"
 	"nostrocket/engine/library"
+	"nostrocket/messaging/eventcatcher"
 	"nostrocket/state"
 	"nostrocket/state/identity"
 
@@ -95,11 +96,16 @@ func createProduct(event nostr.Event) (m Mapped, err error) {
 		ProductInformation: infoID,
 	}
 	products[rocketID] = existingRocketProducts
-	request, err := createPaymentRequest(existingRocketProducts[event.ID])
+	//instead of this, look for a kind0 and package it in a new event along with the invoice.
+	//we should actually get the next-payment-address account to do this instead but for now just trust anyone with votepower
+	//so the state of payment is not updated in consensus unless the kind0 is packaged, this solves the problem of missing kind0s during consensus formation
+	request, err := createPaymentRequestEvent(existingRocketProducts[event.ID])
 	if err != nil {
 		actors.LogCLI(err.Error(), 1)
 	}
-
+	if err == nil {
+		eventcatcher.PublishEvent(request)
+	}
 	fmt.Printf("%#v", request)
 	return getMapped(), nil
 }

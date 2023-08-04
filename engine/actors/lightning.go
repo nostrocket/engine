@@ -1,16 +1,41 @@
-package payments
+package actors
 
 import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/mail"
 	"strconv"
 	"strings"
 
 	"github.com/fiatjaf/go-lnurl"
-	"nostrocket/engine/actors"
+	"github.com/nbd-wtf/go-nostr"
+	decodepay "github.com/nbd-wtf/ln-decodepay"
+	"nostrocket/engine/library"
 )
+
+func DecodeInvoice(invoice string) (b decodepay.Bolt11, e error) {
+	bolt11, err := decodepay.Decodepay(invoice)
+	if err != nil {
+		return b, err
+	}
+	return bolt11, e
+}
+
+func GetLightningAddressFromKind0(event nostr.Event) (string, bool) {
+	if len(event.Content) > 0 {
+		var profile library.Profile
+		err := json.Unmarshal([]byte(event.Content), &profile)
+		if err == nil {
+			addr, err := mail.ParseAddress(profile.Lud16)
+			if err == nil {
+				return strings.Trim(addr.String(), "<>"), true
+			}
+		}
+	}
+	return "", false
+}
 
 func GetInvoice(address string, amount int64, description string) (string, error) {
 	return getInvoice(address, amount, description)
@@ -35,21 +60,21 @@ func decode(url string, amount int64, comment string) (invoice string) {
 	// Get LN Service URL
 	resp, err := http.Get(decodedLnUrl)
 	if err != nil {
-		actors.LogCLI(err, 2)
+		LogCLI(err, 2)
 		return
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		actors.LogCLI(err, 2)
+		LogCLI(err, 2)
 		return
 	}
 	// extract callback URL
 	var response LNServicePayResponse
 	err = json.Unmarshal(body, &response)
 	if err != nil {
-		actors.LogCLI(err, 2)
+		LogCLI(err, 2)
 		return
 	}
 	// Make an HTTP GET request to callback URL with amount to be paid
@@ -57,14 +82,14 @@ func decode(url string, amount int64, comment string) (invoice string) {
 	callbackUrl := response.Callback + "?amount=" + strconv.Itoa(int(amount)) + "&comment=" + strings.TrimSpace(comment)
 	resp, err = http.Get(callbackUrl)
 	if err != nil {
-		actors.LogCLI(err, 2)
+		LogCLI(err, 2)
 		return
 	}
 	defer resp.Body.Close()
 
 	body, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
-		actors.LogCLI(err, 2)
+		LogCLI(err, 2)
 		return ""
 	}
 
@@ -72,7 +97,7 @@ func decode(url string, amount int64, comment string) (invoice string) {
 	var resInvoice LNServiceInvoice
 	err = json.Unmarshal(body, &resInvoice)
 	if err != nil {
-		actors.LogCLI(err, 2)
+		LogCLI(err, 2)
 		return ""
 	}
 	return resInvoice.Pr
@@ -83,13 +108,13 @@ func lightningAddressToUrl(address string) (s string, e error) {
 	if len(split) != 2 {
 		e = fmt.Errorf("invalid lightning address")
 	}
-	return "https://" + split[1] + "/.well-known/lnurlp/" + split[0], e
+	return "https://" + strings.Trim(split[1], "<>") + "/.well-known/lnurlp/" + strings.Trim(split[0], "<>"), e
 }
 
 func generate(url string) string {
 	encodedUrl, err := lnurl.Encode(url)
 	if err != nil {
-		actors.LogCLI(err, 1)
+		LogCLI(err, 1)
 	}
 	return encodedUrl
 }

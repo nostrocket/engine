@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	"nostrocket/engine/actors"
-	"nostrocket/state/payments"
 )
 
 func main() {
@@ -17,7 +16,7 @@ func main() {
 			actors.LogCLI("invalid amount", 1)
 			return
 		}
-		inv, err := payments.GetInvoice(address, int64(amount), "test with space")
+		inv, err := actors.GetInvoice(address, int64(amount), "test with space")
 		if err != nil {
 			actors.LogCLI(err.Error(), 1)
 			return
