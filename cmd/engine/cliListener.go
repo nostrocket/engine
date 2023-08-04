@@ -40,9 +40,9 @@ func cliListener(interrupt chan struct{}) {
 				vp, _ := merits.TotalVotepower()
 				fmt.Printf("\nTotal Votepower: %d\n", vp)
 				for account, share := range m2 {
-					pm, _ := merits.Permille(merits.VotepowerForAccount(account), vp)
+					pm, _ := merits.Permille(merits.VotepowerInNostrocketForAccount(account), vp)
 					fmt.Printf("\nAccount: %s\nLeadTimeLockedMerits: %d\nLeadTime: %d\nLastLeadTimeChange: %d\nLeadTimeUnlockedMerits: %d\nVotepower: %d Permille: %d\n",
-						account, share.LeadTimeLockedMerits, share.LeadTime, share.LeadTimeUnlockedMerits, share.LastLtChange, merits.VotepowerForAccount(account), pm)
+						account, share.LeadTimeLockedMerits, share.LeadTime, share.LeadTimeUnlockedMerits, share.LastLtChange, merits.VotepowerInNostrocketForAccount(account), pm)
 				}
 				fmt.Printf("\n--------- End of data for: %s -----------\n\n", id)
 			}
@@ -50,7 +50,7 @@ func cliListener(interrupt chan struct{}) {
 			close(interrupt)
 		case "w":
 			fmt.Printf("Current Wallet: \n%s\n", actors.MyWallet().Account)
-			fmt.Printf("Current Votepower: \n%#v\n", merits.VotepowerForAccount(actors.MyWallet().Account))
+			fmt.Printf("Current Votepower: \n%#v\n", merits.VotepowerInNostrocketForAccount(actors.MyWallet().Account))
 		case "i":
 			for account, i := range identity.GetMap() {
 				fmt.Printf("ACCOUNT: %s\n%#v\n", account, i)

@@ -131,10 +131,12 @@ var activeRelayConnection *nostr.Relay
 var activeSendChan chan nostr.Event
 
 func PublishEvent(event nostr.Event) {
-	if ok, err := event.CheckSignature(); ok && err != nil {
+	if ok, err := event.CheckSignature(); ok {
 		go func() {
 			activeSendChan <- event
 		}()
+	} else {
+		actors.LogCLI(err, 1)
 	}
 }
 

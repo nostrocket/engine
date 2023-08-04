@@ -21,6 +21,11 @@ func HandleEvent(event nostr.Event) (m Mapped, err error) {
 	switch event.Kind {
 	case 1:
 		return handleByTags(event)
+	case 3340:
+		return handleNewPaymentRequest(event)
+	case 3341:
+		//todo handle payment proof, publish events to find next payment address and replace all payment requests for all products in this rocket
+		return
 	default:
 		return m, fmt.Errorf("I am the payments mind, event %s was sent to me but I don't know how to handle kind %d", event.ID, event.Kind)
 	}
@@ -104,9 +109,10 @@ func createProduct(event nostr.Event) (m Mapped, err error) {
 		actors.LogCLI(err.Error(), 1)
 	}
 	if err == nil {
+		//todo only do this if we are not in consensus mode
 		eventcatcher.PublishEvent(request)
 	}
-	fmt.Printf("%#v", request)
+	//fmt.Printf("%#v", request)
 	return getMapped(), nil
 }
 
@@ -148,7 +154,7 @@ func modifyProduct(event nostr.Event) (m Mapped, err error) {
 	return m, fmt.Errorf("%s tried to modify a product but did not contain a valid state change", event.ID)
 }
 
-func findExistingProductByID(id library.Sha256) (p Product, o bool) {
+func findProductByID(id library.Sha256) (p Product, o bool) {
 	for _, m := range products {
 		if prod, ok := m[id]; ok {
 			return prod, true
@@ -165,7 +171,7 @@ func validateAndReturnOpcodeData(event nostr.Event, opcode string) (r []any, e e
 			return nil, fmt.Errorf("does not contain a target")
 		}
 		r = append(r, target)
-		product, ok := findExistingProductByID(target)
+		product, ok := findProductByID(target)
 		if !ok {
 			return nil, fmt.Errorf("target product does not exist")
 		}

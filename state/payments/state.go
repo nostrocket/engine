@@ -2,6 +2,7 @@ package payments
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/nbd-wtf/go-nostr"
@@ -9,6 +10,7 @@ import (
 	"nostrocket/engine/actors"
 	"nostrocket/engine/library"
 	"nostrocket/messaging/eventcatcher"
+	"nostrocket/state"
 	"nostrocket/state/identity"
 	"nostrocket/state/merits"
 	"nostrocket/state/replay"
@@ -31,21 +33,135 @@ func start() {
 	}
 }
 
-//create an event that generates a new payment request
-func createPaymentRequestEvent(product Product) (n nostr.Event, e error) {
-	address, err := merits.GetNextPaymentAddress(product.RocketID, product.Amount)
-	if err != nil {
-		return n, err
+func handleNewPaymentRequest(event nostr.Event) (m Mapped, e error) {
+	invoice, ok := library.GetOpData(event, "invoice")
+	if !ok {
+		return m, fmt.Errorf("does not contain an invoice")
 	}
+	decodedInvoice, err := actors.DecodeInvoice(invoice)
+	if err != nil {
+		return Mapped{}, err
+	}
+	product, ok := library.GetOpData(event, "product")
+	if !ok {
+		return m, fmt.Errorf("does not contain a product")
+	}
+	productObject, ok := findProductByID(product)
+	if !ok {
+		return m, fmt.Errorf("product %s could not be found in the current state", product)
+	}
+	amt, ok := library.GetOpData(event, "amount")
+	if !ok {
+		return m, fmt.Errorf("does not contain an amount")
+	}
+	amount, err := strconv.ParseInt(amt, 10, 64)
+	if err != nil {
+		return m, err
+	}
+	if decodedInvoice.MSatoshi*1000 != amount {
+		return m, fmt.Errorf("does not contain an amount")
+	}
+
+	if productObject.Amount != amount {
+		return m, fmt.Errorf("amount in payment request does not match amount in product")
+	}
+	account, ok := library.GetOpData(event, "pubkey")
+	if !ok {
+		return m, fmt.Errorf("does not contain the pubkey of the recieving account")
+	}
+	nextPaymentAccount, err := merits.GetNextPaymentAddress(productObject.RocketID, productObject.Amount)
+	if err != nil {
+		return m, err
+	}
+	if nextPaymentAccount != account {
+		return m, fmt.Errorf("account specified by the payment request is not the next payment account")
+	}
+	lud16, ok := library.GetOpData(event, "lud16")
+	if !ok {
+		return m, fmt.Errorf("does not contain a lud16")
+	}
+	paymenthash, ok := library.GetOpData(event, "paymenthash")
+	if !ok {
+		return m, fmt.Errorf("does not contain a payment hash")
+	}
+	if paymenthash != decodedInvoice.PaymentHash {
+		return m, fmt.Errorf("payment hash in invoice does not match event")
+	}
+	if event.PubKey != account {
+		//this payment request was created on behalf of the merit holder but not the merit holder themselves
+		maintainerOnRocket := state.IsMaintainerOnRocket(event.PubKey, productObject.RocketID)
+		//return m, fmt.Errorf("account %s is not a maintainer on this rocket", event.PubKey)
+		votePowerInRocket := merits.VotepowerInRocketForAccount(event.PubKey, productObject.RocketID) > 0
+		//return m, fmt.Errorf("account %s does not have any votepower in this rocket", event.PubKey)
+		maintainer := identity.IsMaintainer(event.PubKey)
+		votepower := merits.VotepowerInNostrocketForAccount(event.PubKey) > 0
+		if !(maintainerOnRocket || maintainer) && (votepower || votePowerInRocket) {
+			fmt.Printf("\nmaintainerOnRocket: %b\nmaintainer: %b\nvotepower: %b\nvotePowerInRocket: %b\n",
+				maintainerOnRocket, maintainer, votepower, votePowerInRocket)
+			return m, fmt.Errorf("account %s does not have credentials to create payment requests on behalf of others", event.PubKey)
+		}
+		//validate that the person creating this payment request used the correct lud16
+		//todo problem: this this will break if anyone changes their lightning address
+		kind0, ok := getLatestKind0(account)
+		if !ok {
+			return m, fmt.Errorf("could not find a kind 0 event for %s", account)
+		}
+		lnaddress, ok := actors.GetLightningAddressFromKind0(kind0)
+		if !ok {
+			return m, fmt.Errorf("could not derive lnaddress from event %s", kind0.ID)
+		}
+		if lnaddress != lud16 {
+			return m, fmt.Errorf("payment request uses %s but the profile of this pubkey lists %s", lud16, lnaddress)
+		}
+	}
+	paymentRequest := PaymentRequest{
+		UID:             event.ID,
+		RocketID:        productObject.RocketID,
+		ProductID:       productObject.UID,
+		WitnessedHeight: 0, //todo add bitcoin height
+		PaidBy:          "",
+		AmountPaid:      0,
+		AmountRequired:  amount,
+		MeritHolder:     account,
+		LUD16:           lud16,
+		Invoice:         invoice,
+		PaymentHash:     paymenthash,
+	}
+	existingRocket, ok := paymentRequests[productObject.RocketID]
+	if !ok {
+		existingRocket = make(map[library.Sha256]PaymentRequest)
+	}
+	existingRocket[productObject.UID] = paymentRequest
+	paymentRequests[productObject.RocketID] = existingRocket
+	return getMapped(), nil
+}
+
+func getLatestKind0(account library.Account) (nostr.Event, bool) {
 	var kind0 nostr.Event
-	actors.LogCLI(fmt.Sprintf("fetching profile for account %s", address), 4)
-	if kind0FromRelay, ok := eventcatcher.FetchLatestKind0([]library.Account{address}); ok {
+	actors.LogCLI(fmt.Sprintf("fetching profile for account %s", account), 4)
+	if kind0FromRelay, ok := eventcatcher.FetchLatestKind0([]library.Account{account}); ok {
 		kind0 = kind0FromRelay
 	}
-	if kind0FromState, ok := identity.GetLatestKind0(address); ok {
+	if kind0FromState, ok := identity.GetLatestKind0(account); ok {
 		if kind0FromState.CreatedAt.After(kind0.CreatedAt) {
 			kind0 = kind0FromState
 		}
+	}
+	if ok, _ := kind0.CheckSignature(); ok {
+		return kind0, true
+	}
+	return nostr.Event{}, false
+}
+
+//create an event that generates a new payment request
+func createPaymentRequestEvent(product Product) (n nostr.Event, e error) {
+	account, err := merits.GetNextPaymentAddress(product.RocketID, product.Amount)
+	if err != nil {
+		return n, err
+	}
+	kind0, ok := getLatestKind0(account)
+	if !ok {
+		return n, fmt.Errorf("could not find latest kind 0 event for account %s", account)
 	}
 	lnaddress, ok := actors.GetLightningAddressFromKind0(kind0)
 	if !ok {
@@ -70,7 +186,7 @@ func createPaymentRequestEvent(product Product) (n nostr.Event, e error) {
 	tags = append(tags, nostr.Tag{"op", "payments.newrequest.rocket", product.RocketID})
 	tags = append(tags, nostr.Tag{"op", "payments.newrequest.product", product.UID})
 	tags = append(tags, nostr.Tag{"op", "payments.newrequest.amount", fmt.Sprintf("%d", product.Amount)})
-	tags = append(tags, nostr.Tag{"op", "payments.newrequest.pubkey", address})
+	tags = append(tags, nostr.Tag{"op", "payments.newrequest.pubkey", account})
 	tags = append(tags, nostr.Tag{"op", "payments.newrequest.lud16", lnaddress})
 	tags = append(tags, nostr.Tag{"op", "payments.newrequest.paymenthash", decoded.PaymentHash})
 	tags = append(tags, nostr.Tag{"e", product.UID, "", "reply"})

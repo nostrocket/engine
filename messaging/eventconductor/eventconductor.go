@@ -94,7 +94,7 @@ func handleEvents() {
 				}
 				lastReplayHash = replay.GetStateHash()
 				//todo create exception for ignition event if we are ignition account
-				if eose && merits.VotepowerForAccount(actors.MyWallet().Account) > 0 && votepowerPosition > 0 {
+				if eose && merits.VotepowerInNostrocketForAccount(actors.MyWallet().Account) > 0 && votepowerPosition > 0 {
 					for _, event := range consensustree.DeleteDuplicateConsensusEvents() {
 						fmt.Printf("\nTODO: publish here after we know we aren't deleting valid events\n%#v\n", event)
 					}
@@ -334,7 +334,7 @@ func routeEvent(e nostr.Event) (mindName string, newState any, err error) {
 	default:
 		mindName = ""
 		newState = nil
-		err = fmt.Errorf("no mind to handle kind %s", e.Kind)
+		err = fmt.Errorf("no mind to handle kind %d", e.Kind)
 	case k >= 640400 && k <= 640499 || k == 0:
 		mindName = "identity"
 		newState, err = identity.HandleEvent(e)
@@ -349,6 +349,8 @@ func routeEvent(e nostr.Event) (mindName string, newState any, err error) {
 		newState, err = problems.HandleEvent(e)
 	case k == 640001:
 		fmt.Printf("\n640001\n%#v\n", e)
+	case k == 3340:
+		newState, err = payments.HandleEvent(e)
 	case k == 1:
 		mindName = ""
 		newState = nil

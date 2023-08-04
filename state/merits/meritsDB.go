@@ -113,12 +113,23 @@ func getMapped() Mapped {
 	return mOuter
 }
 
-func VotepowerForAccount(account library.Account) int64 {
+func VotepowerInNostrocketForAccount(account library.Account) int64 {
 	startDb()
 	currentState[actors.IgnitionRocketID].mutex.Lock()
 	defer currentState[actors.IgnitionRocketID].mutex.Unlock()
 	v, _ := computeVotepower(account, actors.IgnitionRocketID)
 	return v
+}
+
+func VotepowerInRocketForAccount(account library.Sha256, rocket library.RocketID) int64 {
+	startDb()
+	if _, ok := currentState[rocket]; ok {
+		currentState[actors.IgnitionRocketID].mutex.Lock()
+		defer currentState[actors.IgnitionRocketID].mutex.Unlock()
+		a, _ := computeVotepower(account, rocket)
+		return a
+	}
+	return 0
 }
 
 func GetPermille(account library.Account, rocket library.RocketID) (int64, error) {
