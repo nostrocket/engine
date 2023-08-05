@@ -62,7 +62,6 @@ func handleNewPaymentRequest(event nostr.Event) (m Mapped, e error) {
 	if decodedInvoice.MSatoshi/1000 != amount {
 		return m, fmt.Errorf("amount on invoice is %d but amount on request is %d", decodedInvoice.MSatoshi/1000, amount)
 	}
-
 	if productObject.Amount != amount {
 		return m, fmt.Errorf("amount in payment request does not match amount in product")
 	}

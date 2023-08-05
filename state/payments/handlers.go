@@ -100,15 +100,17 @@ func createProduct(event nostr.Event) (m Mapped, err error) {
 		ProductInformation: infoID,
 	}
 	products[rocketID] = existingRocketProducts
+	mapped := getMapped()
 	//instead of this, look for a kind0 and package it in a new event along with the invoice.
 	//we should actually get the next-payment-address account to do this instead but for now just trust anyone with votepower
 	//so the state of payment is not updated in consensus unless the kind0 is packaged, this solves the problem of missing kind0s during consensus formation
 	request, err := createPaymentRequestEvent(existingRocketProducts[event.ID])
 	if err != nil {
 		actors.LogCLI(err.Error(), 1)
+	} else {
+		mapped.Outbox = append(mapped.Outbox, request)
+		fmt.Printf("%#v", request)
 	}
-	mapped := getMapped()
-	mapped.Outbox = append(mapped.Outbox, request)
 	//fmt.Printf("%#v", request)
 	return mapped, nil
 }
@@ -146,7 +148,16 @@ func modifyProduct(event nostr.Event) (m Mapped, err error) {
 	if updates > 0 {
 		existingRocketProducts[target] = existingProduct
 		products[existingProduct.RocketID] = existingRocketProducts
-		return getMapped(), nil
+		mapped := getMapped()
+		request, err := createPaymentRequestEvent(existingProduct)
+		if err != nil {
+			actors.LogCLI(err.Error(), 1)
+		} else {
+			mapped.Outbox = append(mapped.Outbox, request)
+			fmt.Printf("%#v", request)
+		}
+		//fmt.Printf("%#v", request)
+		return mapped, nil
 	}
 	return m, fmt.Errorf("%s tried to modify a product but did not contain a valid state change", event.ID)
 }

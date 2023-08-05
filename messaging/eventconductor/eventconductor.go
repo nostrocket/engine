@@ -273,6 +273,15 @@ func getAllUnhandledStateChangeEventsFromCache() (el []nostr.Event) {
 //	return fmt.Errorf("event is not in direct reply to any other event in nostrocket state")
 //}
 
+func handleOutbox(state any) {
+	switch e := state.(type) {
+	case payments.Mapped:
+		for _, outbox := range e.Outbox {
+			Publish(outbox)
+		}
+	}
+}
+
 func handleEvent(e nostr.Event, fromConsensusEvent bool) error {
 	if eventIsInState(e.ID) {
 		return fmt.Errorf("event %s is already in our local state", e.ID)
@@ -311,6 +320,7 @@ func handleEvent(e nostr.Event, fromConsensusEvent bool) error {
 		Publish(stateEvent)
 		actors.LogCLI(fmt.Sprintf("Published current state in event %s", stateEvent.ID), 4)
 		time.Sleep(time.Second)
+		handleOutbox(mappedState)
 	}
 	return nil
 }
@@ -350,6 +360,7 @@ func routeEvent(e nostr.Event) (mindName string, newState any, err error) {
 	case k == 640001:
 		fmt.Printf("\n640001\n%#v\n", e)
 	case k == 3340:
+		mindName = "payments"
 		newState, err = payments.HandleEvent(e)
 	case k == 1:
 		mindName = ""
