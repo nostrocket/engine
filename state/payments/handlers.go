@@ -7,7 +7,6 @@ import (
 
 	"nostrocket/engine/actors"
 	"nostrocket/engine/library"
-	"nostrocket/messaging/eventcatcher"
 	"nostrocket/state"
 	"nostrocket/state/identity"
 
@@ -108,12 +107,10 @@ func createProduct(event nostr.Event) (m Mapped, err error) {
 	if err != nil {
 		actors.LogCLI(err.Error(), 1)
 	}
-	if err == nil {
-		//todo only do this if we are not in consensus mode
-		eventcatcher.PublishEvent(request)
-	}
+	mapped := getMapped()
+	mapped.Outbox = append(mapped.Outbox, request)
 	//fmt.Printf("%#v", request)
-	return getMapped(), nil
+	return mapped, nil
 }
 
 //modify existing product

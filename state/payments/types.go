@@ -1,6 +1,7 @@
 package payments
 
 import (
+	"github.com/nbd-wtf/go-nostr"
 	"nostrocket/engine/library"
 )
 
@@ -32,6 +33,7 @@ type paymentMap map[library.RocketID]map[library.Sha256]PaymentRequest
 type Mapped struct {
 	Products productMap
 	Payments paymentMap
+	Outbox   []nostr.Event
 }
 
 func GetMapped() (m Mapped) {

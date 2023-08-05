@@ -38,7 +38,7 @@ type Request struct {
 	BlackballPermille int64
 	Approved          bool
 	Rejected          bool
-	MeritsCreated     int64  //should be equal to the Amount in satoshi
+	MeritsCreated     int64
 	Invoice           string //a lightning invoice created to offer this Request for sale
 }
 

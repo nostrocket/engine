@@ -47,6 +47,9 @@ func handleByTags(event nostr.Event) (m Mapped, e error) {
 }
 
 func handleNewVote(event nostr.Event) (m Mapped, e error) {
+	//todo problem: after discussing with a quant, it's clear that the number of merits someone gets needs to be set by the market and can't be 1:1 with the request
+	//solution: dutch auction when someone wants to get btc instead of merits, number of merits keeps going up until someone pays the invoice.
+	//This gives us a market price for merit requests where the contributor does want merits and not bitcoin
 	targetPubkey, ok := library.GetOpData(event, "pubkey")
 	if !ok {
 		return nil, fmt.Errorf("%s tried to vote on a merit request but did not specify a target pubkey", event.ID)
