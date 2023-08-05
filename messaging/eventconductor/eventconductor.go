@@ -292,6 +292,7 @@ func handleEvent(e nostr.Event, fromConsensusEvent bool) error {
 		return fmt.Errorf("invalid replay")
 	}
 	eventsInState[e.ID] = e
+	e.SetExtra("fromConsensusEvent", fromConsensusEvent)
 	mindName, mappedState, err := routeEvent(e)
 	if err != nil {
 		if replayOk {
