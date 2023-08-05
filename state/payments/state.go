@@ -34,6 +34,7 @@ func start() {
 }
 
 func handleNewPaymentRequest(event nostr.Event) (m Mapped, e error) {
+	//todo find existing and don't update unless the account is different, amount different, or has been paid.
 	invoice, ok := library.GetOpData(event, "invoice")
 	if !ok {
 		return m, fmt.Errorf("does not contain an invoice")
@@ -58,8 +59,8 @@ func handleNewPaymentRequest(event nostr.Event) (m Mapped, e error) {
 	if err != nil {
 		return m, err
 	}
-	if decodedInvoice.MSatoshi*1000 != amount {
-		return m, fmt.Errorf("does not contain an amount")
+	if decodedInvoice.MSatoshi/1000 != amount {
+		return m, fmt.Errorf("amount on invoice is %d but amount on request is %d", decodedInvoice.MSatoshi/1000, amount)
 	}
 
 	if productObject.Amount != amount {
