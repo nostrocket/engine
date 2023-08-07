@@ -80,6 +80,17 @@ func handleNewPaymentRequest(event nostr.Event) (m Mapped, e error) {
 	if !ok {
 		return m, fmt.Errorf("does not contain a lud16")
 	}
+	lud06, ok := actors.Lud16ToLud06(lud16)
+	if !ok {
+		return m, fmt.Errorf("could not get lud06")
+	}
+	lud06FromEvent, ok := library.GetOpData(event, "lud06")
+	if !ok {
+		//return m, fmt.Errorf("does not contain a lud06")
+	}
+	if lud06FromEvent != lud06 {
+		//return m, fmt.Errorf("lud16 in event does not match query")
+	}
 	paymenthash, ok := library.GetOpData(event, "paymenthash")
 	if !ok {
 		return m, fmt.Errorf("does not contain a payment hash")
@@ -124,6 +135,7 @@ func handleNewPaymentRequest(event nostr.Event) (m Mapped, e error) {
 		AmountRequired:  amount,
 		MeritHolder:     account,
 		LUD16:           lud16,
+		LUD06:           lud06,
 		Invoice:         invoice,
 		PaymentHash:     paymenthash,
 	}
@@ -153,7 +165,7 @@ func getLatestKind0(account library.Account) (nostr.Event, bool) {
 	return nostr.Event{}, false
 }
 
-//create an event that generates a new payment request
+//create an event that generates a new payment request which is to be used to create a zap request
 func createPaymentRequestEvent(product Product) (n nostr.Event, e error) {
 	account, err := merits.GetNextPaymentAddress(product.RocketID, product.Amount)
 	if err != nil {
@@ -163,19 +175,23 @@ func createPaymentRequestEvent(product Product) (n nostr.Event, e error) {
 	if !ok {
 		return n, fmt.Errorf("could not find latest kind 0 event for account %s", account)
 	}
-	lnaddress, ok := actors.GetLightningAddressFromKind0(kind0)
+	lud16, ok := actors.GetLightningAddressFromKind0(kind0)
 	if !ok {
 		fmt.Printf("%#v", kind0)
-		return n, fmt.Errorf("could not derive lnaddress from event")
+		return n, fmt.Errorf("could not derive lud16 from event")
 	}
-	actors.LogCLI(fmt.Sprintf("fetching a new lightning invoice for address %s", lnaddress), 4)
-	invoice, err := actors.GetInvoice(lnaddress, product.Amount, product.UID)
+	actors.LogCLI(fmt.Sprintf("fetching a new lightning invoice for address %s", lud16), 4)
+	invoice, err := actors.GetInvoice(lud16, product.Amount, product.UID)
 	if err != nil {
 		return n, err
 	}
 	decoded, err := actors.DecodeInvoice(invoice)
 	if err != nil {
 		return n, err
+	}
+	lud06, ok := actors.Lud16ToLud06(lud16)
+	if !ok {
+		return n, fmt.Errorf("could not get lud06")
 	}
 	n.CreatedAt = time.Now()
 	n.PubKey = actors.MyWallet().Account
@@ -187,7 +203,8 @@ func createPaymentRequestEvent(product Product) (n nostr.Event, e error) {
 	tags = append(tags, nostr.Tag{"op", "payments.newrequest.product", product.UID})
 	tags = append(tags, nostr.Tag{"op", "payments.newrequest.amount", fmt.Sprintf("%d", product.Amount)})
 	tags = append(tags, nostr.Tag{"op", "payments.newrequest.pubkey", account})
-	tags = append(tags, nostr.Tag{"op", "payments.newrequest.lud16", lnaddress})
+	tags = append(tags, nostr.Tag{"op", "payments.newrequest.lud16", lud16})
+	tags = append(tags, nostr.Tag{"op", "payments.newrequest.lud06", lud06})
 	tags = append(tags, nostr.Tag{"op", "payments.newrequest.paymenthash", decoded.PaymentHash})
 	tags = append(tags, nostr.Tag{"e", product.UID, "", "reply"})
 	tags = append(tags, nostr.Tag{"e", actors.IgnitionEvent, "", "root"})

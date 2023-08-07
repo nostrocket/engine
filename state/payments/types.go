@@ -23,6 +23,7 @@ type PaymentRequest struct {
 	AmountRequired  int64
 	MeritHolder     library.Account
 	LUD16           string
+	LUD06           string
 	Invoice         string
 	PaymentHash     library.Sha256
 }

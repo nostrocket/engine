@@ -103,7 +103,7 @@ func decode(url string, amount int64, comment string) (invoice string) {
 	return resInvoice.Pr
 }
 
-func lightningAddressToUrl(address string) (s string, e error) {
+func lud16ToUrl(address string) (s string, e error) {
 	split := strings.Split(address, "@")
 	if len(split) != 2 {
 		e = fmt.Errorf("invalid lightning address")
@@ -111,7 +111,7 @@ func lightningAddressToUrl(address string) (s string, e error) {
 	return "https://" + strings.Trim(split[1], "<>") + "/.well-known/lnurlp/" + strings.Trim(split[0], "<>"), e
 }
 
-func generate(url string) string {
+func urlToLud06(url string) string {
 	encodedUrl, err := lnurl.Encode(url)
 	if err != nil {
 		LogCLI(err, 1)
@@ -120,12 +120,25 @@ func generate(url string) string {
 }
 
 func getInvoice(address string, amount int64, description string) (string, error) {
-	if url, err := lightningAddressToUrl(address); err == nil {
-		lnurlo := generate(url)
-		invoice := decode(lnurlo, amount*1000, description)
+	if url, err := lud16ToUrl(address); err == nil {
+		lud06 := urlToLud06(url)
+		invoice := decode(lud06, amount*1000, description)
 		if invoice != "" {
 			return invoice, nil
 		}
 	}
 	return "", fmt.Errorf("failed m89u89u")
+}
+
+func Lud16ToLud06(lud16 string) (string, bool) {
+	url, err := lud16ToUrl(lud16)
+	if err != nil {
+		LogCLI(err, 1)
+		return "", false
+	}
+	lud06 := urlToLud06(url)
+	if len(lud06) > 0 {
+		return lud06, true
+	}
+	return "", false
 }

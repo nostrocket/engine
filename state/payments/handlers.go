@@ -20,6 +20,12 @@ func HandleEvent(event nostr.Event) (m Mapped, err error) {
 	switch event.Kind {
 	case 1:
 		return handleByTags(event)
+	case 9735:
+		return Mapped{}, fmt.Errorf("not implemented")
+		//todo handle zaps
+		//client side is always presented with the next event to zap to pay for a product (each merit holder publishes an event for incoming payments)
+		//whenever we see a zap we add this to the merit holder's payment recieved records and factor it into the round robin
+		//if payments come in too fast its no big deal, no need to verify that the payments are going to the right place, just tally them and update state and let client side figure it out.
 	case 3340:
 		return handleNewPaymentRequest(event)
 	case 3341:
