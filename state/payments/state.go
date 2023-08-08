@@ -35,14 +35,14 @@ func start() {
 
 func handleNewPaymentRequest(event nostr.Event) (m Mapped, e error) {
 	//todo find existing and don't update unless the account is different, amount different, or has been paid.
-	invoice, ok := library.GetOpData(event, "invoice")
-	if !ok {
-		return m, fmt.Errorf("does not contain an invoice")
-	}
-	decodedInvoice, err := actors.DecodeInvoice(invoice)
-	if err != nil {
-		return Mapped{}, err
-	}
+	//invoice, ok := library.GetOpData(event, "invoice")
+	//if !ok {
+	//	return m, fmt.Errorf("does not contain an invoice")
+	//}
+	//decodedInvoice, err := actors.DecodeInvoice(invoice)
+	//if err != nil {
+	//	return Mapped{}, err
+	//}
 	product, ok := library.GetOpData(event, "product")
 	if !ok {
 		return m, fmt.Errorf("does not contain a product")
@@ -59,9 +59,9 @@ func handleNewPaymentRequest(event nostr.Event) (m Mapped, e error) {
 	if err != nil {
 		return m, err
 	}
-	if decodedInvoice.MSatoshi/1000 != amount {
-		return m, fmt.Errorf("amount on invoice is %d but amount on request is %d", decodedInvoice.MSatoshi/1000, amount)
-	}
+	//if decodedInvoice.MSatoshi/1000 != amount {
+	//	return m, fmt.Errorf("amount on invoice is %d but amount on request is %d", decodedInvoice.MSatoshi/1000, amount)
+	//}
 	if productObject.Amount != amount {
 		return m, fmt.Errorf("amount in payment request does not match amount in product")
 	}
@@ -91,13 +91,13 @@ func handleNewPaymentRequest(event nostr.Event) (m Mapped, e error) {
 	if lud06FromEvent != lud06 {
 		//return m, fmt.Errorf("lud16 in event does not match query")
 	}
-	paymenthash, ok := library.GetOpData(event, "paymenthash")
-	if !ok {
-		return m, fmt.Errorf("does not contain a payment hash")
-	}
-	if paymenthash != decodedInvoice.PaymentHash {
-		return m, fmt.Errorf("payment hash in invoice does not match event")
-	}
+	//paymenthash, ok := library.GetOpData(event, "paymenthash")
+	//if !ok {
+	//	return m, fmt.Errorf("does not contain a payment hash")
+	//}
+	//if paymenthash != decodedInvoice.PaymentHash {
+	//	return m, fmt.Errorf("payment hash in invoice does not match event")
+	//}
 	if event.PubKey != account {
 		//this payment request was created on behalf of the merit holder but not the merit holder themselves
 		maintainerOnRocket := state.IsMaintainerOnRocket(event.PubKey, productObject.RocketID)
@@ -124,6 +124,14 @@ func handleNewPaymentRequest(event nostr.Event) (m Mapped, e error) {
 		if lnaddress != lud16 {
 			return m, fmt.Errorf("payment request uses %s but the profile of this pubkey lists %s", lud16, lnaddress)
 		}
+		//todo validate nostr
+	}
+	lnService, ok := actors.GetLNServiceResponse(lud06)
+	if !ok {
+		return m, fmt.Errorf("could not get lnservice details")
+	}
+	if (lnService.MaxSendable / 1000) < amount {
+		return m, fmt.Errorf("next payment request is %d but max sendable for this user is %d", amount, lnService.MaxSendable/1000)
 	}
 	paymentRequest := PaymentRequest{
 		UID:             event.ID,
@@ -136,8 +144,9 @@ func handleNewPaymentRequest(event nostr.Event) (m Mapped, e error) {
 		MeritHolder:     account,
 		LUD16:           lud16,
 		LUD06:           lud06,
-		Invoice:         invoice,
-		PaymentHash:     paymenthash,
+		CallbackURL:     lnService.Callback,
+		//Invoice:         invoice,
+		//PaymentHash:     paymenthash,
 	}
 	existingRocket, ok := paymentRequests[productObject.RocketID]
 	if !ok {
@@ -180,15 +189,15 @@ func createPaymentRequestEvent(product Product) (n nostr.Event, e error) {
 		fmt.Printf("%#v", kind0)
 		return n, fmt.Errorf("could not derive lud16 from event")
 	}
-	actors.LogCLI(fmt.Sprintf("fetching a new lightning invoice for address %s", lud16), 4)
-	invoice, err := actors.GetInvoice(lud16, product.Amount, product.UID)
-	if err != nil {
-		return n, err
-	}
-	decoded, err := actors.DecodeInvoice(invoice)
-	if err != nil {
-		return n, err
-	}
+	//actors.LogCLI(fmt.Sprintf("fetching a new lightning invoice for address %s", lud16), 4)
+	//invoice, err := actors.GetInvoice(lud16, product.Amount, product.UID)
+	//if err != nil {
+	//	return n, err
+	//}
+	//decoded, err := actors.DecodeInvoice(invoice)
+	//if err != nil {
+	//	return n, err
+	//}
 	lud06, ok := actors.Lud16ToLud06(lud16)
 	if !ok {
 		return n, fmt.Errorf("could not get lud06")
@@ -198,14 +207,14 @@ func createPaymentRequestEvent(product Product) (n nostr.Event, e error) {
 	n.Kind = 3340
 	tags := nostr.Tags{}
 	tags = append(tags, nostr.Tag{"r", replay.GetCurrentHashForAccount(actors.MyWallet().Account)})
-	tags = append(tags, nostr.Tag{"op", "payments.newrequest.invoice", invoice})
+	//tags = append(tags, nostr.Tag{"op", "payments.newrequest.invoice", invoice})
 	tags = append(tags, nostr.Tag{"op", "payments.newrequest.rocket", product.RocketID})
 	tags = append(tags, nostr.Tag{"op", "payments.newrequest.product", product.UID})
 	tags = append(tags, nostr.Tag{"op", "payments.newrequest.amount", fmt.Sprintf("%d", product.Amount)})
 	tags = append(tags, nostr.Tag{"op", "payments.newrequest.pubkey", account})
 	tags = append(tags, nostr.Tag{"op", "payments.newrequest.lud16", lud16})
 	tags = append(tags, nostr.Tag{"op", "payments.newrequest.lud06", lud06})
-	tags = append(tags, nostr.Tag{"op", "payments.newrequest.paymenthash", decoded.PaymentHash})
+	//tags = append(tags, nostr.Tag{"op", "payments.newrequest.paymenthash", decoded.PaymentHash})
 	tags = append(tags, nostr.Tag{"e", product.UID, "", "reply"})
 	tags = append(tags, nostr.Tag{"e", actors.IgnitionEvent, "", "root"})
 	n.Tags = tags

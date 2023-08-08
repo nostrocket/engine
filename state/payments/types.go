@@ -26,6 +26,7 @@ type PaymentRequest struct {
 	LUD06           string
 	Invoice         string
 	PaymentHash     library.Sha256
+	CallbackURL     string
 }
 
 type productMap map[library.RocketID]map[library.Sha256]Product

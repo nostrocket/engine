@@ -22,7 +22,7 @@ type CurrentState struct {
 }
 
 func (c *CurrentState) Wire() (w WireState) {
-	w.Payments = c.Payments
+	//w.Payments = c.Payments
 	w.Identity = c.Identity
 	w.Problems = c.Problems
 	w.Replay = c.Replay
@@ -36,42 +36,54 @@ func (c *CurrentState) Wire() (w WireState) {
 			ProblemID:   r.ProblemID,
 			MissionID:   r.MissionID,
 			Maintainers: r.Maintainers,
-			Products:    []payments.Product{},
+			Products:    []Product{},
 		}
 		if d, exists := c.Payments.Products[id]; exists {
 			for _, product := range d {
-				newRocket.Products = append(newRocket.Products, product)
+				newRocket.Products = append(newRocket.Products, Product{
+					UID:                product.UID,
+					RocketID:           product.RocketID,
+					Amount:             product.Amount,
+					ProductInformation: product.ProductInformation,
+					NextPayment: NextPayment{
+						UID:      c.Payments.Payments[product.RocketID][product.UID].UID,
+						Pubkey:   c.Payments.Payments[product.RocketID][product.UID].MeritHolder,
+						LUD06:    c.Payments.Payments[product.RocketID][product.UID].LUD06,
+						LUD16:    c.Payments.Payments[product.RocketID][product.UID].LUD16,
+						Callback: c.Payments.Payments[product.RocketID][product.UID].CallbackURL,
+					},
+				})
 			}
 		}
 		w.Rockets[id] = newRocket
 	}
-	w.Products = make(MappedProducts)
-	for rocketID, m := range c.Payments.Products {
-		for sha256, product := range m {
-			w.Products[sha256] = Product{
-				UID:                sha256,
-				RocketID:           product.RocketID,
-				Amount:             product.Amount,
-				ProductInformation: product.ProductInformation,
-				NextPayment: NextPayment{
-					UID:    c.Payments.Payments[rocketID][sha256].UID,
-					Pubkey: c.Payments.Payments[rocketID][sha256].MeritHolder,
-					LUD06:  c.Payments.Payments[rocketID][sha256].LUD06,
-				},
-			}
-		}
-	}
+	//w.Products = make(MappedProducts)
+	//for rocketID, m := range c.Payments.Products {
+	//	for sha256, product := range m {
+	//		w.Products[sha256] = Product{
+	//			UID:                sha256,
+	//			RocketID:           product.RocketID,
+	//			Amount:             product.Amount,
+	//			ProductInformation: product.ProductInformation,
+	//			NextPayment: NextPayment{
+	//				UID:    c.Payments.Payments[rocketID][sha256].UID,
+	//				Pubkey: c.Payments.Payments[rocketID][sha256].MeritHolder,
+	//				LUD06:  c.Payments.Payments[rocketID][sha256].LUD06,
+	//			},
+	//		}
+	//	}
+	//}
 	return
 }
 
 type WireState struct {
-	Identity any             `json:"identity"`
-	Merits   any             `json:"merits"`
-	Replay   any             `json:"replay"`
-	Rockets  MappedRockets   `json:"rockets"`
-	Problems any             `json:"problems"`
-	Payments payments.Mapped `json:"payments"`
-	Products MappedProducts  `json:"products"`
+	Identity any           `json:"identity"`
+	Merits   any           `json:"merits"`
+	Replay   any           `json:"replay"`
+	Rockets  MappedRockets `json:"rockets"`
+	Problems any           `json:"problems"`
+	//Payments payments.Mapped `json:"payments"`
+	//Products MappedProducts  `json:"products"`
 }
 
 type MappedProducts map[library.Sha256]Product
@@ -85,21 +97,23 @@ type Product struct {
 }
 
 type NextPayment struct {
-	UID    library.Sha256
-	Pubkey library.Account
-	LUD06  string
+	UID      library.Sha256
+	Pubkey   library.Account
+	LUD06    string
+	LUD16    string
+	Callback string
 }
 
 type MappedRockets map[library.RocketID]Rocket
 
 type Rocket struct {
-	RocketUID   library.Sha256
-	RocketName  string
-	CreatedBy   library.Account
-	ProblemID   library.Sha256
-	MissionID   library.Sha256
-	Products    []payments.Product
-	Payments    []payments.PaymentRequest
+	RocketUID  library.Sha256
+	RocketName string
+	CreatedBy  library.Account
+	ProblemID  library.Sha256
+	MissionID  library.Sha256
+	Products   []Product
+	//Payments    []payments.PaymentRequest
 	Maintainers []library.Account
 }
 

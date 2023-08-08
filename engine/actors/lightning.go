@@ -54,6 +54,32 @@ type LNServiceInvoice struct {
 	Routes []struct{} `json:"routes"`
 }
 
+func GetLNServiceResponse(lnurla string) (l LNServicePayResponse, b bool) {
+	// Decode LN Url
+	decodedLnUrl, _ := lnurl.LNURLDecode(lnurla)
+	// Get LN Service URL
+	resp, err := http.Get(decodedLnUrl)
+	if err != nil {
+		LogCLI(err, 2)
+		return
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		LogCLI(err, 2)
+		return
+	}
+	// extract callback URL
+	var response LNServicePayResponse
+	err = json.Unmarshal(body, &response)
+	if err != nil {
+		LogCLI(err, 2)
+		return
+	}
+	return response, true
+}
+
 func decode(url string, amount int64, comment string) (invoice string) {
 	// Decode LN Url
 	decodedLnUrl, _ := lnurl.LNURLDecode(url)
