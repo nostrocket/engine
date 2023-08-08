@@ -45,6 +45,22 @@ func (c *CurrentState) Wire() (w WireState) {
 		}
 		w.Rockets[id] = newRocket
 	}
+	w.Products = make(MappedProducts)
+	for rocketID, m := range c.Payments.Products {
+		for sha256, product := range m {
+			w.Products[sha256] = Product{
+				UID:                sha256,
+				RocketID:           product.RocketID,
+				Amount:             product.Amount,
+				ProductInformation: product.ProductInformation,
+				NextPayment: NextPayment{
+					UID:    c.Payments.Payments[rocketID][sha256].UID,
+					Pubkey: c.Payments.Payments[rocketID][sha256].MeritHolder,
+					LUD06:  c.Payments.Payments[rocketID][sha256].LUD06,
+				},
+			}
+		}
+	}
 	return
 }
 
@@ -55,6 +71,23 @@ type WireState struct {
 	Rockets  MappedRockets   `json:"rockets"`
 	Problems any             `json:"problems"`
 	Payments payments.Mapped `json:"payments"`
+	Products MappedProducts  `json:"products"`
+}
+
+type MappedProducts map[library.Sha256]Product
+
+type Product struct {
+	UID                library.Sha256
+	RocketID           library.Sha256
+	Amount             int64          //price in sats
+	ProductInformation library.Sha256 //ID of event with information about the product
+	NextPayment        NextPayment
+}
+
+type NextPayment struct {
+	UID    library.Sha256
+	Pubkey library.Account
+	LUD06  string
 }
 
 type MappedRockets map[library.RocketID]Rocket
