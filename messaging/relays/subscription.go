@@ -34,6 +34,10 @@ func SubscribeToIgnitionTree(eChan chan nostr.Event, sendChan chan nostr.Event, 
 		actors.LogCLI(err.Error(), 1)
 	}
 	lastEventTime := time.Now()
+	go func() {
+		<-sub.EndOfStoredEvents
+		eose <- true
+	}()
 L:
 	for {
 		select {
@@ -64,8 +68,6 @@ L:
 				sane()
 				//library.LogCLI("Event "+e.ID+" publish status: "+status.String(), 4)
 			}()
-		case <-sub.EndOfStoredEvents:
-			eose <- true
 		case ev := <-sub.Events:
 			//fmt.Println(ev.ID)
 			sane := library.ValidateSaneExecutionTime()

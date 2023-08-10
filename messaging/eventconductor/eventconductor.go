@@ -45,11 +45,10 @@ var publishChan = make(chan nostr.Event)
 
 func Publish(event nostr.Event) {
 	go func() {
-		fmt.Println(48)
 		sane := library.ValidateSaneExecutionTime()
 		defer sane()
 		go func() { publishChan <- event }()
-		fmt.Printf("\n51\n%#v\n", event)
+		fmt.Printf("\n51%#v\n", event)
 	}()
 }
 
@@ -109,10 +108,8 @@ func handleEvents() {
 					if !ok {
 						if time.Since(timeSinceLastKind0Query) > time.Minute*10 {
 							timeSinceLastKind0Query = time.Now()
-							//todo call this explicitely
-							publishChan <- nostr.Event{
-								Kind: 15171031,
-								Tags: nostr.Tags{subscribeToKind0Events()},
+							for _, account := range subscribeToKind0Events() {
+								go relays.FetchLatestProfile(account)
 							}
 						}
 						if replay.GetStateHash() != lastReplayHash {
@@ -259,27 +256,10 @@ func getAllUnhandledStateChangeEventsFromCache() (el []nostr.Event) {
 	return
 }
 
-//func processEvent(e nostr.Event) error {
-//	eventsInStateLock.Lock()
-//	defer eventsInStateLock.Unlock()
-//	if eventIsInState(e.ID) {
-//		return nil
-//	}
-//	if eventsInState.isDirectReply(e) {
-//		err := handleEvent(e, false)
-//		if err != nil {
-//			return err
-//		}
-//		return nil
-//	}
-//	return fmt.Errorf("event is not in direct reply to any other event in nostrocket state")
-//}
-
 func handleOutbox(state any) {
 	switch e := state.(type) {
 	case payments.Mapped:
 		for _, outbox := range e.Outbox {
-			fmt.Println(281)
 			Publish(outbox)
 		}
 	}
