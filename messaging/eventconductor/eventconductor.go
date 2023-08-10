@@ -77,6 +77,9 @@ func handleEvents() {
 			case <-eoseChan:
 				eose = true
 			case event := <-eventChan:
+				if event.Kind == 9735 {
+					fmt.Println("zap received")
+				}
 				if !addEventToCache(event) {
 					if event.Kind == 640001 && !eventIsInState(event.ID) {
 						actors.LogCLI(fmt.Sprintf("consensus event from relay: %s", event.ID), 4)
@@ -260,7 +263,15 @@ func handleOutbox(state any) {
 	switch e := state.(type) {
 	case payments.Mapped:
 		for _, outbox := range e.Outbox {
-			Publish(outbox)
+			if ok, _ := outbox.CheckSignature(); ok {
+				Publish(outbox)
+			}
+			if outbox.Kind == 15171031 {
+				if len(outbox.Content) == 64 {
+					relays.Subscribe(outbox.Content)
+				}
+
+			}
 		}
 	}
 }
