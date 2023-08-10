@@ -10,7 +10,7 @@ import (
 	"github.com/sasha-s/go-deadlock"
 	"nostrocket/engine/actors"
 	"nostrocket/engine/library"
-	"nostrocket/messaging/eventcatcher"
+	"nostrocket/messaging/relays"
 	"nostrocket/state/consensustree"
 	"nostrocket/state/identity"
 	"nostrocket/state/merits"
@@ -48,7 +48,7 @@ func Publish(event nostr.Event) {
 		fmt.Println(48)
 		sane := library.ValidateSaneExecutionTime()
 		defer sane()
-		publishChan <- event
+		go func() { publishChan <- event }()
 		fmt.Printf("\n51\n%#v\n", event)
 	}()
 }
@@ -63,7 +63,7 @@ func handleEvents() {
 		var eventChan = make(chan nostr.Event)
 		stack := library.NewEventStack(1)
 		var eose bool
-		go eventcatcher.SubscribeToTree(eventChan, publishChan, eoseChan)
+		go relays.SubscribeToIgnitionTree(eventChan, publishChan, eoseChan)
 		var timeToWaitBeforeHandlingNewStateChangeEvents time.Duration
 		votepowerPosition := merits.GetPosition(actors.MyWallet().Account)
 		if votepowerPosition > 0 {
@@ -109,6 +109,7 @@ func handleEvents() {
 					if !ok {
 						if time.Since(timeSinceLastKind0Query) > time.Minute*10 {
 							timeSinceLastKind0Query = time.Now()
+							//todo call this explicitely
 							publishChan <- nostr.Event{
 								Kind: 15171031,
 								Tags: nostr.Tags{subscribeToKind0Events()},
@@ -178,7 +179,7 @@ func handleConsensusEvent(e nostr.Event) error {
 					time.Sleep(time.Millisecond * 500)
 					event, ok = getEventFromCache(e)
 					if !ok {
-						ev, fetchok := eventcatcher.FetchCache(e)
+						ev, fetchok := relays.FetchCache(e)
 						event = *ev
 						if !fetchok {
 							actors.LogCLI("could not get event "+e, 2)

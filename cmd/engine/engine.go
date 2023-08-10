@@ -15,7 +15,7 @@ import (
 )
 
 func main() {
-	deadlock.Opts.DeadlockTimeout = time.Second * 5
+	deadlock.Opts.DeadlockTimeout = time.Second * 10
 	// Various aspect of this application require global and local settings. To keep things
 	// clean and tidy we put these settings in a Viper configuration.
 	conf := viper.New()

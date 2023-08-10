@@ -9,7 +9,7 @@ import (
 	"github.com/sasha-s/go-deadlock"
 	"nostrocket/engine/actors"
 	"nostrocket/engine/library"
-	"nostrocket/messaging/eventcatcher"
+	"nostrocket/messaging/relays"
 	"nostrocket/state"
 	"nostrocket/state/identity"
 	"nostrocket/state/merits"
@@ -160,7 +160,7 @@ func handleNewPaymentRequest(event nostr.Event) (m Mapped, e error) {
 func getLatestKind0(account library.Account) (nostr.Event, bool) {
 	var kind0 nostr.Event
 	actors.LogCLI(fmt.Sprintf("fetching profile for account %s", account), 4)
-	if kind0FromRelay, ok := eventcatcher.FetchLatestKind0([]library.Account{account}); ok {
+	if kind0FromRelay, ok := relays.FetchLatestProfile(account); ok {
 		kind0 = kind0FromRelay
 	}
 	if kind0FromState, ok := identity.GetLatestKind0(account); ok {
