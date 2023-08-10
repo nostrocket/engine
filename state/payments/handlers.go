@@ -107,6 +107,7 @@ func createProduct(event nostr.Event) (m Mapped, err error) {
 	}
 	products[rocketID] = existingRocketProducts
 	mapped := getMapped()
+	mapped.Outbox = append(mapped.Outbox, nostr.Event{Kind: 15171031, Content: event.ID})
 	//instead of this, look for a kind0 and package it in a new event along with the invoice.
 	//we should actually get the next-payment-address account to do this instead but for now just trust anyone with votepower
 	//so the state of payment is not updated in consensus unless the kind0 is packaged, this solves the problem of missing kind0s during consensus formation
@@ -122,7 +123,7 @@ func createProduct(event nostr.Event) (m Mapped, err error) {
 	return mapped, nil
 }
 
-//modify existing product
+// modify existing product
 func modifyProduct(event nostr.Event) (m Mapped, err error) {
 	targetData, err := validateAndReturnOpcodeData(event, "target")
 	if err != nil {

@@ -45,10 +45,11 @@ var publishChan = make(chan nostr.Event)
 
 func Publish(event nostr.Event) {
 	go func() {
+		fmt.Println(48)
 		sane := library.ValidateSaneExecutionTime()
 		defer sane()
 		publishChan <- event
-		//fmt.Printf("\n48\n%#v\n", event)
+		fmt.Printf("\n51\n%#v\n", event)
 	}()
 }
 
@@ -138,7 +139,7 @@ func handleEvents() {
 func processStateChangeEventOutOfConsensus(event *nostr.Event) error {
 	sane := library.ValidateSaneExecutionTime()
 	defer sane()
-	if time.Since(event.CreatedAt) > time.Hour*24 && event.Kind != 0 {
+	if time.Since(event.CreatedAt.Time()) > time.Hour*24 && event.Kind != 0 {
 		return fmt.Errorf("we are probably missing a consensus event")
 	}
 	err := handleEvent(*event, false)
@@ -277,6 +278,7 @@ func handleOutbox(state any) {
 	switch e := state.(type) {
 	case payments.Mapped:
 		for _, outbox := range e.Outbox {
+			fmt.Println(281)
 			Publish(outbox)
 		}
 	}
@@ -321,8 +323,8 @@ func handleEvent(e nostr.Event, fromConsensusEvent bool) error {
 		Publish(stateEvent)
 		actors.LogCLI(fmt.Sprintf("Published current state in event %s", stateEvent.ID), 4)
 		time.Sleep(time.Second)
-		handleOutbox(mappedState)
 	}
+	handleOutbox(mappedState)
 	return nil
 }
 

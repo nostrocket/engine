@@ -29,7 +29,7 @@ func handleKind0(event nostr.Event) (m Mapped, e error) {
 		return m, fmt.Errorf("account does not exist in USH tree")
 	}
 	existingIdentity := getLatestIdentity(event.PubKey)
-	if event.CreatedAt.After(existingIdentity.LatestKind0.CreatedAt) {
+	if event.CreatedAt.Time().After(existingIdentity.LatestKind0.CreatedAt.Time()) {
 		existingIdentity.LatestKind0 = event
 		if err := existingIdentity.upsert(event.PubKey); err != nil {
 			return m, err

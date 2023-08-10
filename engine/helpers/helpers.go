@@ -11,7 +11,7 @@ import (
 func DeleteEvent(id library.Sha256, reason string) (r nostr.Event) {
 	r = nostr.Event{
 		PubKey:    actors.MyWallet().Account,
-		CreatedAt: time.Now(),
+		CreatedAt: nostr.Timestamp(time.Now().Unix()),
 		Kind:      5,
 		Tags: nostr.Tags{nostr.Tag{
 			"e", id},

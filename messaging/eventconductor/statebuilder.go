@@ -151,7 +151,7 @@ func AppendState(name string, state any) (WireState, bool) {
 func CurrentStateEventBuilder(state string) nostr.Event {
 	e := nostr.Event{
 		PubKey:    actors.MyWallet().Account,
-		CreatedAt: time.Now(),
+		CreatedAt: nostr.Timestamp(time.Now().Unix()),
 		Kind:      10311,
 		Tags:      nostr.Tags{nostr.Tag{"e", actors.CurrentStates, "", "reply"}, nostr.Tag{"e", actors.IgnitionEvent, "", "root"}},
 		Content:   state,

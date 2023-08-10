@@ -54,7 +54,7 @@ package consensustree
 //	}
 //	n := nostr.Event{
 //		PubKey:    actors.MyWallet().Account,
-//		CreatedAt: time.Now(),
+//		CreatedAt: nostr.Timestamp(time.Now().Unix()),
 //		Kind:      640001,
 //		Tags:      t,
 //		Content:   fmt.Sprintf("%s", j),

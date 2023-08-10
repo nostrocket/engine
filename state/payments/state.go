@@ -164,7 +164,7 @@ func getLatestKind0(account library.Account) (nostr.Event, bool) {
 		kind0 = kind0FromRelay
 	}
 	if kind0FromState, ok := identity.GetLatestKind0(account); ok {
-		if kind0FromState.CreatedAt.After(kind0.CreatedAt) {
+		if kind0FromState.CreatedAt.Time().After(kind0.CreatedAt.Time()) {
 			kind0 = kind0FromState
 		}
 	}
@@ -174,7 +174,7 @@ func getLatestKind0(account library.Account) (nostr.Event, bool) {
 	return nostr.Event{}, false
 }
 
-//create an event that generates a new payment request which is to be used to create a zap request
+// create an event that generates a new payment request which is to be used to create a zap request
 func createPaymentRequestEvent(product Product) (n nostr.Event, e error) {
 	account, err := merits.GetNextPaymentAddress(product.RocketID, product.Amount)
 	if err != nil {
@@ -202,7 +202,7 @@ func createPaymentRequestEvent(product Product) (n nostr.Event, e error) {
 	if !ok {
 		return n, fmt.Errorf("could not get lud06")
 	}
-	n.CreatedAt = time.Now()
+	n.CreatedAt = nostr.Timestamp(time.Now().Unix())
 	n.PubKey = actors.MyWallet().Account
 	n.Kind = 3340
 	tags := nostr.Tags{}

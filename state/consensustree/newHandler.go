@@ -19,10 +19,10 @@ var events = make(map[library.Sha256]nostr.Event)
 var num int64 = 0
 var debug = false
 
-//HandleConsensusEvent e: the consensus event (kind 640001) to handle
-//scEvent: caller should listen on this channel and handle state change event with this ID
-//result: caller should send the result after handling event scEvent
-//publish: caller should publish (to relays) events received on this channel
+// HandleConsensusEvent e: the consensus event (kind 640001) to handle
+// scEvent: caller should listen on this channel and handle state change event with this ID
+// result: caller should send the result after handling event scEvent
+// publish: caller should publish (to relays) events received on this channel
 func HandleConsensusEvent(e nostr.Event, scEvent chan library.Sha256, scResult chan bool, cPublish chan nostr.Event, localEvent bool) error {
 	if debug {
 		cPublish <- helpers.DeleteEvent(e.ID, "woops")
@@ -60,9 +60,9 @@ func handleNewConsensusEvent(unmarshalled Kind640001, e nostr.Event, scEvent cha
 		if c.StateChangeEventID != unmarshalled.StateChangeEventID {
 			if e.PubKey == actors.MyWallet().Account {
 				cPublish <- helpers.DeleteEvent(e.ID, "invalid checkpoint detected")
-				actors.LogCLI(fmt.Sprintf("attempting to delete consensus event created %f seconds ago", time.Since(e.CreatedAt).Seconds()), 2)
+				actors.LogCLI(fmt.Sprintf("attempting to delete consensus event created %f seconds ago", time.Since(e.CreatedAt.Time()).Seconds()), 2)
 			}
-			return fmt.Errorf("trying to parse %s at height %d created %f hours ago, but we already have a checkpoint for %s at height %d", unmarshalled.StateChangeEventID, unmarshalled.Height, time.Since(e.CreatedAt).Hours(), c.StateChangeEventID, c.StateChangeEventHeight)
+			return fmt.Errorf("trying to parse %s at height %d created %f hours ago, but we already have a checkpoint for %s at height %d", unmarshalled.StateChangeEventID, unmarshalled.Height, time.Since(e.CreatedAt.Time()).Hours(), c.StateChangeEventID, c.StateChangeEventHeight)
 		}
 	}
 	var current map[library.Sha256]TreeEvent
@@ -92,14 +92,14 @@ func handleNewConsensusEvent(unmarshalled Kind640001, e nostr.Event, scEvent cha
 		var del []library.Sha256
 		for _, event := range currentInner.ConsensusEvents {
 			if event.PubKey == actors.MyWallet().Account {
-				if event.CreatedAt.Unix() <= timestamp {
-					timestamp = event.CreatedAt.Unix()
+				if int64(event.CreatedAt) <= timestamp {
+					timestamp = int64(event.CreatedAt)
 				}
 			}
 		}
 		for _, event := range currentInner.ConsensusEvents {
 			if event.PubKey == actors.MyWallet().Account {
-				if event.CreatedAt.Unix() > timestamp {
+				if int64(event.CreatedAt) > timestamp {
 					del = append(del, event.ID)
 
 				}
@@ -221,7 +221,7 @@ func deleteDuplicateConsensusEvents() (r []nostr.Event) {
 				}
 			}
 			sort.Slice(ourConsensusEvents, func(i, j int) bool {
-				return ourConsensusEvents[i].CreatedAt.Unix() < ourConsensusEvents[j].CreatedAt.Unix()
+				return ourConsensusEvents[i].CreatedAt < ourConsensusEvents[j].CreatedAt
 			})
 			for k := len(ourConsensusEvents); k > 1; k-- {
 				r = append(r, helpers.DeleteEvent(ourConsensusEvents[k-1].ID, "duplicatae consensus event"))
@@ -283,7 +283,7 @@ func produceConsensusEvent(data Kind640001) (nostr.Event, error) {
 	}
 	n := nostr.Event{
 		PubKey:    actors.MyWallet().Account,
-		CreatedAt: time.Now(),
+		CreatedAt: nostr.Timestamp(time.Now().Unix()),
 		Kind:      640001,
 		Tags:      t,
 		Content:   fmt.Sprintf("%s", j),
