@@ -8,6 +8,7 @@ import (
 
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/sasha-s/go-deadlock"
+	"golang.org/x/exp/slices"
 	"nostrocket/engine/actors"
 	"nostrocket/engine/library"
 	"nostrocket/messaging/relays"
@@ -48,7 +49,7 @@ func Publish(event nostr.Event) {
 		sane := library.ValidateSaneExecutionTime()
 		defer sane()
 		go func() { publishChan <- event }()
-		fmt.Printf("\n51%#v\n", event)
+		//fmt.Printf("\n51%#v\n", event)
 	}()
 }
 
@@ -77,9 +78,6 @@ func handleEvents() {
 			case <-eoseChan:
 				eose = true
 			case event := <-eventChan:
-				if event.Kind == 9735 {
-					fmt.Println("zap received")
-				}
 				if !addEventToCache(event) {
 					if event.Kind == 640001 && !eventIsInState(event.ID) {
 						actors.LogCLI(fmt.Sprintf("consensus event from relay: %s", event.ID), 4)
@@ -137,10 +135,12 @@ func handleEvents() {
 	}
 }
 
+var replayExceptions = []int{0, 9735}
+
 func processStateChangeEventOutOfConsensus(event *nostr.Event) error {
 	sane := library.ValidateSaneExecutionTime()
 	defer sane()
-	if time.Since(event.CreatedAt.Time()) > time.Hour*24 && event.Kind != 0 {
+	if time.Since(event.CreatedAt.Time()) > time.Hour*24 && !slices.Contains(replayExceptions, event.Kind) {
 		return fmt.Errorf("we are probably missing a consensus event")
 	}
 	err := handleEvent(*event, false)
@@ -282,7 +282,7 @@ func handleEvent(e nostr.Event, fromConsensusEvent bool) error {
 	}
 	actors.LogCLI(fmt.Sprintf("Attempting to handle state change event %s kind %d [consensus mode: %v]", e.ID, e.Kind, fromConsensusEvent), 4)
 	closer, replayState, replayOk := replay.HandleEvent(e)
-	if !replayOk && e.Kind != 0 {
+	if !replayOk && !slices.Contains(replayExceptions, e.Kind) {
 		return fmt.Errorf("invalid replay")
 	}
 	eventsInState[e.ID] = e
@@ -297,7 +297,7 @@ func handleEvent(e nostr.Event, fromConsensusEvent bool) error {
 		return err
 	}
 	actors.LogCLI(fmt.Sprintf("State of %s has been updated by %s [consensus mode: %v]", mindName, e.ID, fromConsensusEvent), 3)
-	if e.Kind != 0 {
+	if !slices.Contains(replayExceptions, e.Kind) {
 		closer <- true
 		newReplayState := <-replayState
 		close(replayState)
@@ -310,7 +310,7 @@ func handleEvent(e nostr.Event, fromConsensusEvent bool) error {
 	}
 	//publish our current state
 	//todo only publish if we are at the current bitcoin tip
-	if !fromConsensusEvent && e.Kind != 0 {
+	if !fromConsensusEvent && !slices.Contains(replayExceptions, e.Kind) {
 		stateEvent := CurrentStateEventBuilder(fmt.Sprintf("%s", b))
 		Publish(stateEvent)
 		actors.LogCLI(fmt.Sprintf("Published current state in event %s", stateEvent.ID), 4)
@@ -354,7 +354,7 @@ func routeEvent(e nostr.Event) (mindName string, newState any, err error) {
 		newState, err = problems.HandleEvent(e)
 	case k == 640001:
 		fmt.Printf("\n640001\n%#v\n", e)
-	case k == 3340:
+	case k == 3340 || k == 9735:
 		mindName = "payments"
 		newState, err = payments.HandleEvent(e)
 	case k == 1:

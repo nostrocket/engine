@@ -51,11 +51,10 @@ func Subscribe(eventID library.Sha256) {
 					go func() { sendToConductor <- *ev }()
 				case <-end:
 					sub.Close()
-					relay.Close()
+					relay.Close() //do we need to do this?
 					return
 				}
 			}
-
 		}(url)
 	}
 }

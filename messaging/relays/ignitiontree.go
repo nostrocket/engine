@@ -104,7 +104,7 @@ L:
 				go SubscribeToIgnitionTree(eChan, sendChan, eose)
 				break L
 			}
-			sendChan <- makeKeepAliveEvent()
+			go func() { sendChan <- makeKeepAliveEvent() }()
 		case <-actors.GetTerminateChan():
 			break L
 		}
