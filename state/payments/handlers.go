@@ -61,16 +61,40 @@ func handlePaymentProof(event nostr.Event) (m Mapped, e error) {
 		return Mapped{}, err
 	}
 	m.Outbox = append(m.Outbox, meritsMapped)
-	//add a paymentsReceived record to the product,
+	//add the payer to the product
+	//todo make this the bitcoin height or bitcoin height + payment period (for expiry)
+	if len(products[zapData.Product.RocketID][zapData.Product.UID].CurrentUsers) == 0 {
+		existing := products[zapData.Product.RocketID][zapData.Product.UID]
+		existing.CurrentUsers = make(map[library.Account]int64)
+		products[zapData.Product.RocketID][zapData.Product.UID] = existing
+	}
+	products[zapData.Product.RocketID][zapData.Product.UID].CurrentUsers[zapData.PayerPubkey] = 0
 
-	//add the user to the user list
+	//create an event to archive the payment request if this is the next one
+	if paymentRequests[zapData.Product.RocketID][zapData.Product.UID].MeritHolder == zapData.PayerPubkey {
+		requestEvent, err := createPaymentRequestEvent(products[zapData.Product.RocketID][zapData.Product.UID], zapData)
+		if err != nil {
+			actors.LogCLI(err, 1)
+		} else {
+			m.Outbox = append(m.Outbox, requestEvent)
+		}
+	}
+
 	//update next payment request and archive existing if this one is correct
 
 	//add the zap receipt ID to the handled dataset so we dont do it again
 	handledReceipts[zapData.ZapReceiptID] = 0 //todo make this the current bitcoin height
-	fmt.Printf("\n71%#v\n", meritsMapped)
-	fmt.Printf("\n72%#v\n", zapData)
-	return Mapped{}, fmt.Errorf("ssdfsa")
+	//fmt.Printf("\n71%#v\n", meritsMapped)
+	//fmt.Printf("\n72%#v\n", zapData)
+	//return Mapped{}, fmt.Errorf("ssdfsa")
+	mapped := getMapped()
+	m.Payments = mapped.Payments
+	m.Products = mapped.Products
+	fmt.Printf("\n%#v\n", m.Products)
+	for _, outbox := range m.Outbox {
+		fmt.Printf("\n%#v\n", outbox)
+	}
+	return
 }
 
 func handleZapReceipt(event nostr.Event) (m Mapped, e error) {
@@ -82,7 +106,7 @@ func handleZapReceipt(event nostr.Event) (m Mapped, e error) {
 	if err != nil {
 		return Mapped{}, err
 	}
-	fmt.Printf("\n%#v\n", zap)
+	//fmt.Printf("\n%#v\n", zap)
 	//Create a 97351 event to:
 	//add a paymentsReceived record to the product,
 	//add the user to the user list,
