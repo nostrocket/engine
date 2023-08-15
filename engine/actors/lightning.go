@@ -47,6 +47,7 @@ type LNServicePayResponse struct {
 	MinSendable int64  `json:"minSendable"`
 	Metadata    string `json:"metadata"`
 	Tag         string `json:"tag"`
+	LSPubkey    string `json:"nostrPubkey"`
 }
 
 type LNServiceInvoice struct {

@@ -21,6 +21,8 @@ type meritsForRocket struct {
 var currentState = make(map[library.RocketID]meritsForRocket)
 var currentStateMu = &deadlock.Mutex{}
 
+var handledZaps = make(map[library.Sha256]struct{})
+
 var started = false
 var available = &deadlock.Mutex{}
 

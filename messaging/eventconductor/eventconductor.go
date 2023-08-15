@@ -144,7 +144,7 @@ func processStateChangeEventOutOfConsensus(event *nostr.Event) error {
 		return fmt.Errorf("we are probably missing a consensus event")
 	}
 	err := handleEvent(*event, false)
-	if err == nil && event.Kind != 0 {
+	if err == nil && !slices.Contains(replayExceptions, event.Kind) {
 		consensusEvent, err := consensustree.CreateNewConsensusEvent(*event)
 		if err != nil {
 			return err
@@ -156,6 +156,7 @@ func processStateChangeEventOutOfConsensus(event *nostr.Event) error {
 		if err == nil {
 			addEventToState(consensusEvent.ID)
 			Publish(consensusEvent)
+			actors.LogCLI(fmt.Sprintf("published consensus event for state change caused by %s", event.ID), 3)
 		}
 	}
 	return err
@@ -259,21 +260,27 @@ func getAllUnhandledStateChangeEventsFromCache() (el []nostr.Event) {
 	return
 }
 
-func handleOutbox(state any) {
+func handleOutbox(state any) (mindName string, newMappedState any, exists bool) {
 	switch e := state.(type) {
 	case payments.Mapped:
 		for _, outbox := range e.Outbox {
-			if ok, _ := outbox.CheckSignature(); ok {
-				Publish(outbox)
-			}
-			if outbox.Kind == 15171031 {
-				if len(outbox.Content) == 64 {
-					relays.Subscribe(outbox.Content)
+			switch o := outbox.(type) {
+			case nostr.Event:
+				if ok, _ := o.CheckSignature(); ok {
+					Publish(o)
 				}
-
+				if o.Kind == 15171031 {
+					if len(o.Content) == 64 {
+						relays.Subscribe(o.Content)
+					}
+				}
+			case merits.Mapped:
+				return "merits", o, true
 			}
+
 		}
 	}
+	return
 }
 
 func handleEvent(e nostr.Event, fromConsensusEvent bool) error {
@@ -303,6 +310,9 @@ func handleEvent(e nostr.Event, fromConsensusEvent bool) error {
 		close(replayState)
 		AppendState("replay", newReplayState)
 	}
+	if mn, ns, ok := handleOutbox(mappedState); ok {
+		AppendState(mn, ns)
+	}
 	n, _ := AppendState(mindName, mappedState)
 	b, err := json.Marshal(n)
 	if err != nil {
@@ -316,7 +326,6 @@ func handleEvent(e nostr.Event, fromConsensusEvent bool) error {
 		actors.LogCLI(fmt.Sprintf("Published current state in event %s", stateEvent.ID), 4)
 		time.Sleep(time.Second)
 	}
-	handleOutbox(mappedState)
 	return nil
 }
 
@@ -354,7 +363,7 @@ func routeEvent(e nostr.Event) (mindName string, newState any, err error) {
 		newState, err = problems.HandleEvent(e)
 	case k == 640001:
 		fmt.Printf("\n640001\n%#v\n", e)
-	case k == 3340 || k == 9735:
+	case k == 3340 || k == 9735 || k == 15179735:
 		mindName = "payments"
 		newState, err = payments.HandleEvent(e)
 	case k == 1:

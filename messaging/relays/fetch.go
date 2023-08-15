@@ -10,7 +10,7 @@ import (
 	"nostrocket/engine/library"
 )
 
-var relays = []string{"wss://nostr.688.org", "wss://nos.lol", "wss://relay.damus.io", "wss://blastr.f7z.xyz"}
+var relays = []string{"ws://127.0.0.1:45321", "wss://nostr.688.org", "wss://nos.lol", "wss://relay.damus.io", "wss://blastr.f7z.xyz", "wss://nostr.mutinywallet.com"}
 
 func FetchLatestProfile(account library.Account) (n nostr.Event, b bool) {
 	sane := library.ValidateSaneExecutionTime()
@@ -46,6 +46,7 @@ func FetchLatestProfile(account library.Account) (n nostr.Event, b bool) {
 				case ev := <-sub.Events:
 					eventsMu.Lock()
 					events[ev.ID] = *ev
+					pushCache(*ev)
 					eventsMu.Unlock()
 				case <-time.After(time.Second * 6):
 					go func() {

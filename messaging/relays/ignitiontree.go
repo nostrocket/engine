@@ -16,7 +16,7 @@ func SubscribeToIgnitionTree(eChan chan nostr.Event, sendChan chan nostr.Event, 
 	var sleepChan = make(chan bool)
 	sleeper(sleepChan)
 	sendToConductor = eChan
-	mainRelay, err := nostr.RelayConnect(context.Background(), "wss://nostr.688.org")
+	mainRelay, err := nostr.RelayConnect(context.Background(), "wss://nostr.688.org") //"ws://127.0.0.1:45321") //
 	if err != nil {
 		actors.LogCLI(fmt.Sprintf("could not connect to relay: %s", err), 0)
 	}

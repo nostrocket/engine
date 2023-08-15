@@ -16,8 +16,10 @@ import (
 	"nostrocket/state/replay"
 )
 
-var paymentRequests paymentMap
+var paymentRequests nextPaymentRequest
 var products productMap
+var paymentRecieved paymentsReceived
+var handledReceipts = make(map[library.Sha256]int64)
 
 var currentStateMu = &deadlock.Mutex{}
 
@@ -29,12 +31,14 @@ func start() {
 	if !started {
 		started = true
 		paymentRequests = make(map[library.RocketID]map[library.Sha256]PaymentRequest)
+		paymentRecieved = make(paymentsReceived)
 		products = make(map[library.RocketID]map[library.Sha256]Product)
 	}
 }
 
 func handleNewPaymentRequest(event nostr.Event) (m Mapped, e error) {
 	//todo find existing and don't update unless the account is different, amount different, or has been paid.
+	//todo archive the existing one if it has been paid
 	//invoice, ok := library.GetOpData(event, "invoice")
 	//if !ok {
 	//	return m, fmt.Errorf("does not contain an invoice")
@@ -133,6 +137,7 @@ func handleNewPaymentRequest(event nostr.Event) (m Mapped, e error) {
 	if (lnService.MaxSendable / 1000) < amount {
 		return m, fmt.Errorf("next payment request is %d but max sendable for this user is %d", amount, lnService.MaxSendable/1000)
 	}
+	fmt.Println(lnService.LSPubkey)
 	paymentRequest := PaymentRequest{
 		UID:             event.ID,
 		RocketID:        productObject.RocketID,
@@ -145,6 +150,7 @@ func handleNewPaymentRequest(event nostr.Event) (m Mapped, e error) {
 		LUD16:           lud16,
 		LUD06:           lud06,
 		CallbackURL:     lnService.Callback,
+		LSPubkey:        lnService.LSPubkey,
 		//Invoice:         invoice,
 		//PaymentHash:     paymenthash,
 	}
@@ -175,7 +181,7 @@ func getLatestKind0(account library.Account) (nostr.Event, bool) {
 }
 
 // create an event that generates a new payment request which is to be used to create a zap request
-func createPaymentRequestEvent(product Product) (n nostr.Event, e error) {
+func createPaymentRequestEvent(product Product, zapData ZapData) (n nostr.Event, e error) {
 	account, err := merits.GetNextPaymentAddress(product.RocketID, product.Amount)
 	if err != nil {
 		return n, err
@@ -264,10 +270,10 @@ func createPaymentRequestEvent(product Product) (n nostr.Event, e error) {
 //	return
 //}
 
-//func createNextPaymentRequests() (pm paymentMap) {
-//	pm = make(paymentMap)
+//func createNextPaymentRequests() (pm nextPaymentRequest) {
+//	pm = make(nextPaymentRequest)
 //	for id, m := range productMap {
-//		paymentMap := make(map[library.Sha256]PaymentRequest)
+//		nextPaymentRequest := make(map[library.Sha256]PaymentRequest)
 //		for sha256, product := range m {
 //			address, err := merits.GetNextPaymentAddress(product.RocketID, product.Amount)
 //			if err != nil {
