@@ -15,7 +15,7 @@ func Tip() (t Block, b bool) {
 
 func tip() (t Block, b bool) {
 	for _, block := range currentState {
-		if block.Height < t.Height {
+		if block.Height > t.Height {
 			t = block
 			b = true
 		}
