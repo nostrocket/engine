@@ -119,11 +119,13 @@ func makeEvent(block blocks.Block) (n nostr.Event) {
 	n.Content = ""
 	n.CreatedAt = nostr.Timestamp(time.Now().Unix())
 	tags := nostr.Tags{}
+	tags = append(tags, nostr.Tag{"e", actors.IgnitionEvent})
 	tags = append(tags, nostr.Tag{"hash", block.Hash})
 	tags = append(tags, nostr.Tag{"height", fmt.Sprintf("%d", block.Height)})
 	tags = append(tags, nostr.Tag{"difficulty", fmt.Sprintf("%d", block.Difficulty)})
 	tags = append(tags, nostr.Tag{"minertime", fmt.Sprintf("%d", block.MinerTime.Unix())})
 	tags = append(tags, nostr.Tag{"mediantime", fmt.Sprintf("%d", block.MedianTime.Unix())})
+
 	n.Tags = tags
 	return
 }

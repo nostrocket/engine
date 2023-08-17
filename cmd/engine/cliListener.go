@@ -6,6 +6,7 @@ import (
 
 	"github.com/eiannone/keyboard"
 	"nostrocket/engine/actors"
+	"nostrocket/messaging/blocks"
 	"nostrocket/messaging/eventconductor"
 	"nostrocket/state/consensustree"
 	"nostrocket/state/identity"
@@ -109,7 +110,9 @@ func cliListener(interrupt chan struct{}) {
 			for id, rocket := range wire.Rockets {
 				fmt.Printf("\n%s\n%#v\n", id, rocket.Products)
 			}
-
+		case "t":
+			t, _ := blocks.Tip()
+			fmt.Printf("%#v", t)
 			//fmt.Printf("\n%#v\n", wire.Payments.Products)
 		}
 	}

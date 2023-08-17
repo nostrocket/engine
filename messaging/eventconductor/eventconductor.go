@@ -3,6 +3,8 @@ package eventconductor
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -11,6 +13,7 @@ import (
 	"golang.org/x/exp/slices"
 	"nostrocket/engine/actors"
 	"nostrocket/engine/library"
+	"nostrocket/messaging/blocks"
 	"nostrocket/messaging/relays"
 	"nostrocket/state/consensustree"
 	"nostrocket/state/identity"
@@ -21,7 +24,15 @@ import (
 	"nostrocket/state/rockets"
 )
 
+// todo whenever we receive an out of consensus event: send the latest block headers in reverse order until we get one that works or there are none left.
 type EventMap map[string]nostr.Event
+
+var bitcoinBlocks []bblocks
+
+type bblocks struct {
+	height int64
+	event  nostr.Event
+}
 
 var eventsInState = make(EventMap)
 var eventsInStateLock = &deadlock.Mutex{}
@@ -78,6 +89,9 @@ func handleEvents() {
 			case <-eoseChan:
 				eose = true
 			case event := <-eventChan:
+				if event.ID == "3c646146725ae950627c77eccc2763a419349acddb30b4489a187e664070d3d7" {
+					continue
+				}
 				if !addEventToCache(event) {
 					if event.Kind == 640001 && !eventIsInState(event.ID) {
 						actors.LogCLI(fmt.Sprintf("consensus event from relay: %s", event.ID), 4)
@@ -86,6 +100,23 @@ func handleEvents() {
 							actors.LogCLI(err.Error(), 0)
 						}
 					} else {
+						if event.Kind == 1517 {
+							if heightStr, ok := library.GetFirstTag(event, "height"); ok {
+								if height, err := strconv.ParseInt(heightStr, 10, 64); err == nil {
+									bitcoinBlocks = append(bitcoinBlocks, bblocks{
+										height: height,
+										event:  event,
+									})
+									sort.Slice(bitcoinBlocks, func(i, j int) bool {
+										return bitcoinBlocks[i].height < bitcoinBlocks[j].height
+									})
+									for _, block := range bitcoinBlocks {
+										fmt.Printf("checking block order: %d", block.height)
+									}
+								}
+							}
+							continue
+						}
 						stack.Push(&event)
 					}
 				}
@@ -101,6 +132,12 @@ func handleEvents() {
 					}
 					event, ok := stack.Pop()
 					if ok {
+						for _, block := range bitcoinBlocks {
+							if err := processStateChangeEventOutOfConsensus(&block.event); err == nil {
+								break
+							}
+						}
+						bitcoinBlocks = []bblocks{}
 						err := processStateChangeEventOutOfConsensus(event)
 						if err != nil {
 							//actors.LogCLI(fmt.Sprintf("event %s: ", err.Error()), 2)
@@ -135,7 +172,8 @@ func handleEvents() {
 	}
 }
 
-var replayExceptions = []int{0, 9735}
+var replayExceptions = []int{0, 9735, 1517}
+var consensusExceptions = []int{0, 9735}
 
 func processStateChangeEventOutOfConsensus(event *nostr.Event) error {
 	sane := library.ValidateSaneExecutionTime()
@@ -144,7 +182,7 @@ func processStateChangeEventOutOfConsensus(event *nostr.Event) error {
 		return fmt.Errorf("we are probably missing a consensus event")
 	}
 	err := handleEvent(*event, false)
-	if err == nil && !slices.Contains(replayExceptions, event.Kind) {
+	if err == nil && !slices.Contains(consensusExceptions, event.Kind) {
 		consensusEvent, err := consensustree.CreateNewConsensusEvent(*event)
 		if err != nil {
 			return err
@@ -349,6 +387,9 @@ func routeEvent(e nostr.Event) (mindName string, newState any, err error) {
 		mindName = ""
 		newState = nil
 		err = fmt.Errorf("no mind to handle kind %d", e.Kind)
+	case k == 1517:
+		mindName = "blocks"
+		newState, err = blocks.HandleEvent(e)
 	case k >= 640400 && k <= 640499 || k == 0:
 		mindName = "identity"
 		newState, err = identity.HandleEvent(e)

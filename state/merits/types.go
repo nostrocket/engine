@@ -4,7 +4,7 @@ import (
 	"nostrocket/engine/library"
 )
 
-//Merit STATUS:DRAFT
+// Merit STATUS:DRAFT
 type Merit struct {
 	Account                library.Account
 	RocketID               library.RocketID
@@ -16,7 +16,7 @@ type Merit struct {
 	Requests               []Request
 }
 
-//Request STATUS:DRAFT
+// Request STATUS:DRAFT
 type Request struct {
 	LtLocked          bool            //indicates if the Merits in this request are Locked under the current lead time or not
 	OwnedBy           library.Account //the current owner of these merits

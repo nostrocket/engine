@@ -4,6 +4,7 @@ go 1.18
 
 require (
 	github.com/btcsuite/btcd/btcec/v2 v2.2.0
+	github.com/davecgh/go-spew v1.1.1
 	github.com/eiannone/keyboard v0.0.0-20220611211555-0d226195f203
 	github.com/fiatjaf/go-lnurl v1.12.2
 	github.com/mborders/logmatic v0.4.0
@@ -33,7 +34,6 @@ require (
 	github.com/btcsuite/go-socks v0.0.0-20170105172521-4720035b7bfd // indirect
 	github.com/btcsuite/websocket v0.0.0-20150119174127-31079b680792 // indirect
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/decred/dcrd/crypto/blake256 v1.0.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
 	github.com/decred/dcrd/lru v1.0.0 // indirect

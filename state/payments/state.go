@@ -39,6 +39,26 @@ func start() {
 func handleNewPaymentRequest(event nostr.Event) (m Mapped, e error) {
 	//todo find existing and don't update unless the account is different, amount different, or has been paid.
 	//todo archive the existing one if it has been paid
+	//zapdataString, ok := library.GetOpData(event, "zapdata")
+	//if ok {
+	//	zapData := ZapData{}
+	//	err := json.Unmarshal([]byte(zapdataString), &zapData)
+	//	if err != nil {
+	//		return Mapped{}, err
+	//	}
+	//	if _, ok := paymentRecieved[zapData.Product.RocketID]; !ok {
+	//		paymentRecieved[zapData.Product.RocketID] = make(map[library.Sha256][]PaymentRequest)
+	//	}
+	//	if _, ok := paymentRecieved[zapData.Product.RocketID][zapData.Product.UID]; !ok {
+	//		paymentRecieved[zapData.Product.RocketID][zapData.Product.UID] = []PaymentRequest{}
+	//	}
+	//	paymentRecieved[zapData.Product.RocketID][zapData.Product.UID] =
+	//		append(paymentRecieved[zapData.Product.RocketID][zapData.Product.UID],
+	//			paymentRequests[zapData.Product.RocketID][zapData.Product.UID])
+	//
+	//	paymentRequests[zapData.Product.RocketID][zapData.Product.UID] = PaymentRequest{}
+	//}
+
 	//invoice, ok := library.GetOpData(event, "invoice")
 	//if !ok {
 	//	return m, fmt.Errorf("does not contain an invoice")
@@ -223,6 +243,11 @@ func createPaymentRequestEvent(product Product, zapData ZapData) (n nostr.Event,
 	//tags = append(tags, nostr.Tag{"op", "payments.newrequest.paymenthash", decoded.PaymentHash})
 	tags = append(tags, nostr.Tag{"e", product.UID, "", "reply"})
 	tags = append(tags, nostr.Tag{"e", actors.IgnitionEvent, "", "root"})
+	//if we have zapdata, add it to the event
+	if len(zapData.PayerPubkey) == 64 {
+
+	}
+
 	n.Tags = tags
 	n.Content = ""
 	n.ID = n.GetID()
