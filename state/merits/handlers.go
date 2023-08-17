@@ -7,6 +7,7 @@ import (
 
 	"github.com/nbd-wtf/go-nostr"
 	"nostrocket/engine/library"
+	"nostrocket/messaging/blocks"
 	"nostrocket/state/identity"
 	"nostrocket/state/problems"
 	"nostrocket/state/rockets"
@@ -144,7 +145,7 @@ func getExistingMeritData(event nostr.Event, targetPubkey library.Account) (m Me
 			RocketID:               rocketID,
 			LeadTimeLockedMerits:   0,
 			LeadTime:               0,
-			LastLtChange:           0, //todo use current bitcoin height
+			LastLtChange:           blocks.Tip().Height,
 			LeadTimeUnlockedMerits: 0,
 			Requests:               []Request{},
 		}
@@ -190,7 +191,7 @@ func handleNewMeritRequest(event nostr.Event) (m Mapped, e error) {
 		Problem:           problemID,
 		Amount:            amount,
 		RemuneratedAmount: 0,
-		WitnessedAt:       0, //todo add current Bitcoin height
+		WitnessedAt:       blocks.Tip().Height,
 		Ratifiers:         make(map[library.Account]struct{}),
 		Blackballers:      make(map[library.Account]struct{}),
 	}
@@ -222,7 +223,7 @@ func handleCreateNewCapTable(event nostr.Event) (m Mapped, e error) {
 		RocketID:               rocketID,
 		LeadTimeLockedMerits:   1,
 		LeadTime:               1,
-		LastLtChange:           0, //todo current bitcoin height
+		LastLtChange:           blocks.Tip().Height,
 		LeadTimeUnlockedMerits: 0,
 	}
 	currentState[rocketID] = d

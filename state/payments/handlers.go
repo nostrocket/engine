@@ -9,6 +9,7 @@ import (
 
 	"nostrocket/engine/actors"
 	"nostrocket/engine/library"
+	"nostrocket/messaging/blocks"
 	"nostrocket/state"
 	"nostrocket/state/identity"
 	"nostrocket/state/merits"
@@ -62,13 +63,12 @@ func handlePaymentProof(event nostr.Event) (m Mapped, e error) {
 	}
 	m.Outbox = append(m.Outbox, meritsMapped)
 	//add the payer to the product
-	//todo make this the bitcoin height or bitcoin height + payment period (for expiry)
 	if len(products[zapData.Product.RocketID][zapData.Product.UID].CurrentUsers) == 0 {
 		existing := products[zapData.Product.RocketID][zapData.Product.UID]
 		existing.CurrentUsers = make(map[library.Account]int64)
 		products[zapData.Product.RocketID][zapData.Product.UID] = existing
 	}
-	products[zapData.Product.RocketID][zapData.Product.UID].CurrentUsers[zapData.PayerPubkey] = 0
+	products[zapData.Product.RocketID][zapData.Product.UID].CurrentUsers[zapData.PayerPubkey] = blocks.Tip().Height
 
 	//create an event to archive the payment request if this is the next one
 	if paymentRequests[zapData.Product.RocketID][zapData.Product.UID].MeritHolder == zapData.PayerPubkey {
@@ -83,7 +83,7 @@ func handlePaymentProof(event nostr.Event) (m Mapped, e error) {
 	//update next payment request and archive existing if this one is correct
 
 	//add the zap receipt ID to the handled dataset so we dont do it again
-	handledReceipts[zapData.ZapReceiptID] = 0 //todo make this the current bitcoin height
+	handledReceipts[zapData.ZapReceiptID] = blocks.Tip().Height
 	//fmt.Printf("\n71%#v\n", meritsMapped)
 	//fmt.Printf("\n72%#v\n", zapData)
 	//return Mapped{}, fmt.Errorf("ssdfsa")

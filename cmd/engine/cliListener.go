@@ -111,7 +111,7 @@ func cliListener(interrupt chan struct{}) {
 				fmt.Printf("\n%s\n%#v\n", id, rocket.Products)
 			}
 		case "t":
-			t, _ := blocks.Tip()
+			t := blocks.Tip()
 			fmt.Printf("%#v", t)
 			//fmt.Printf("\n%#v\n", wire.Payments.Products)
 		}

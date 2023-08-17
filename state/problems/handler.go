@@ -7,6 +7,7 @@ import (
 	"github.com/nbd-wtf/go-nostr"
 	"nostrocket/engine/actors"
 	"nostrocket/engine/library"
+	"nostrocket/messaging/blocks"
 	"nostrocket/state"
 	"nostrocket/state/identity"
 )
@@ -75,7 +76,7 @@ func handleMetaActions(event nostr.Event, action string) (m Mapped, e error) {
 		}
 		if !currentProblem.Closed && len(currentProblem.ClaimedBy) == 0 {
 			currentProblem.ClaimedBy = event.PubKey
-			//todo add bitcoin height to currentProblem.ClaimedAt
+			currentProblem.ClaimedAt = blocks.Tip().Height
 			updates++
 		}
 	case "abandon":

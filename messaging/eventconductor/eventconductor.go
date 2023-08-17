@@ -89,9 +89,6 @@ func handleEvents() {
 			case <-eoseChan:
 				eose = true
 			case event := <-eventChan:
-				if event.ID == "3c646146725ae950627c77eccc2763a419349acddb30b4489a187e664070d3d7" {
-					continue
-				}
 				if !addEventToCache(event) {
 					if event.Kind == 640001 && !eventIsInState(event.ID) {
 						actors.LogCLI(fmt.Sprintf("consensus event from relay: %s", event.ID), 4)
@@ -108,11 +105,8 @@ func handleEvents() {
 										event:  event,
 									})
 									sort.Slice(bitcoinBlocks, func(i, j int) bool {
-										return bitcoinBlocks[i].height < bitcoinBlocks[j].height
+										return bitcoinBlocks[i].height > bitcoinBlocks[j].height
 									})
-									for _, block := range bitcoinBlocks {
-										fmt.Printf("checking block order: %d", block.height)
-									}
 								}
 							}
 							continue

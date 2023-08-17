@@ -7,7 +7,6 @@ import (
 
 	"github.com/nbd-wtf/go-nostr"
 	"nostrocket/engine/library"
-	"nostrocket/state/merits"
 )
 
 func HandleEvent(event nostr.Event) (m Mapped, e error) {
@@ -18,9 +17,9 @@ func HandleEvent(event nostr.Event) (m Mapped, e error) {
 		return nil, fmt.Errorf("invalid kind")
 	}
 
-	if merits.VotepowerInNostrocketForAccount(event.PubKey) < 1 {
-		return nil, fmt.Errorf("pubkey doesn't have votepower")
-	}
+	//if merits.VotepowerInNostrocketForAccount(event.PubKey) < 1 {
+	//	return nil, fmt.Errorf("pubkey doesn't have votepower")
+	//}
 
 	hash, ok := library.GetFirstTag(event, "hash")
 	if !ok {
@@ -69,12 +68,10 @@ func HandleEvent(event nostr.Event) (m Mapped, e error) {
 			return nil, fmt.Errorf("we already have this block")
 		}
 	}
-	t, ok := tip()
-	if ok {
-		if t.Height >= heightInt {
-			return nil, fmt.Errorf("this block is not higher than our current block")
-		}
+	if tip().Height >= heightInt {
+		return nil, fmt.Errorf("this block is not higher than our current block")
 	}
+
 	currentState[heightInt] = Block{
 		Height:     heightInt,
 		Hash:       hash,
@@ -82,5 +79,6 @@ func HandleEvent(event nostr.Event) (m Mapped, e error) {
 		MinerTime:  time.Unix(minerTimeInt, 0),
 		Difficulty: difficultyInt,
 	}
+	//todo validate that we also get the same block from our source
 	return getMapped(), nil
 }

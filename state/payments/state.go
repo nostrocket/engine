@@ -9,6 +9,7 @@ import (
 	"github.com/sasha-s/go-deadlock"
 	"nostrocket/engine/actors"
 	"nostrocket/engine/library"
+	"nostrocket/messaging/blocks"
 	"nostrocket/messaging/relays"
 	"nostrocket/state"
 	"nostrocket/state/identity"
@@ -162,7 +163,7 @@ func handleNewPaymentRequest(event nostr.Event) (m Mapped, e error) {
 		UID:             event.ID,
 		RocketID:        productObject.RocketID,
 		ProductID:       productObject.UID,
-		WitnessedHeight: 0, //todo add bitcoin height
+		WitnessedHeight: blocks.Tip().Height,
 		PaidBy:          "",
 		AmountPaid:      0,
 		AmountRequired:  amount,

@@ -39,7 +39,6 @@ type Request struct {
 	Approved          bool
 	Rejected          bool
 	MeritsCreated     int64
-	Invoice           string //a lightning invoice created to offer this Request for sale
 }
 
 type Mapped map[library.RocketID]map[library.Account]Merit

@@ -12,6 +12,7 @@ import (
 	"nostrocket/engine/actors"
 	"nostrocket/engine/helpers"
 	"nostrocket/engine/library"
+	"nostrocket/messaging/blocks"
 	"nostrocket/state/merits"
 )
 
@@ -85,7 +86,7 @@ func handleNewConsensusEvent(unmarshalled Kind640001, e nostr.Event, scEvent cha
 			Votepower:               0,
 			TotalVotepoweAtHeight:   0,
 			Permille:                0,
-			BitcoinHeight:           0,
+			BitcoinHeight:           blocks.Tip().Height,
 		}
 	}
 	if e.PubKey == actors.MyWallet().Account && currentInner.StateChangeEventHandled && currentInner.IHaveSigned { //&& !localEvent
@@ -197,7 +198,7 @@ func handleNewConsensusEvent(unmarshalled Kind640001, e nostr.Event, scEvent cha
 		setCheckpoint(Checkpoint{
 			StateChangeEventHeight: currentInner.StateChangeEventHeight,
 			StateChangeEventID:     currentInner.StateChangeEventID,
-			BitcoinHeight:          0, //todo bitcoin height
+			BitcoinHeight:          blocks.Tip().Height,
 			CreatedAt:              time.Now().Unix(),
 		})
 	}
@@ -242,7 +243,7 @@ func CreateNewConsensusEvent(ev nostr.Event) (n nostr.Event, e error) {
 	inner := Kind640001{
 		StateChangeEventID: ev.ID,
 		Height:             height + 1,
-		BitcoinHeight:      0, //todo bitcoin height
+		BitcoinHeight:      blocks.Tip().Height,
 	}
 	newConsensusEvent, err := produceConsensusEvent(inner)
 	if err != nil {
