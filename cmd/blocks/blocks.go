@@ -134,10 +134,12 @@ func getLatestBlock() (rb blocks.Block, e error) {
 	hash, err := getHash()
 	if err != nil {
 		actors.LogCLI(err, 3)
+		return rb, err
 	}
 	block, err := getBlock(hash)
 	if err != nil {
 		actors.LogCLI(err, 3)
+		return rb, err
 	}
 	return block, nil
 }
@@ -188,7 +190,8 @@ func getHash() (string, error) {
 		return "", err
 	}
 	if resp.StatusCode != 200 {
-		panic(resp.StatusCode)
+		actors.LogCLI("HTML staus code from server: "+fmt.Sprintf("%d", resp.StatusCode), 3)
+		return "", fmt.Errorf("html error code: %d", resp.StatusCode)
 	}
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
