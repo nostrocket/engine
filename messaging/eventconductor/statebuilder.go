@@ -1,12 +1,15 @@
 package eventconductor
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/sasha-s/go-deadlock"
 	"nostrocket/engine/actors"
 	"nostrocket/engine/library"
+	"nostrocket/messaging/blocks"
+	"nostrocket/state/consensustree"
 	"nostrocket/state/payments"
 	"nostrocket/state/rockets"
 )
@@ -151,11 +154,17 @@ func AppendState(name string, state any) (WireState, bool) {
 }
 
 func CurrentStateEventBuilder(state string) nostr.Event {
+	tags := nostr.Tags{
+		nostr.Tag{"e", actors.CurrentStates, "", "reply"},
+		nostr.Tag{"e", actors.IgnitionEvent, "", "root"},
+		nostr.Tag{"height", fmt.Sprintf("%d", blocks.Tip().Height)},
+		nostr.Tag{"consensus", fmt.Sprintf("%d", len(consensustree.GetAllStateChangeEventsInOrder()))},
+	}
 	e := nostr.Event{
 		PubKey:    actors.MyWallet().Account,
 		CreatedAt: nostr.Timestamp(time.Now().Unix()),
 		Kind:      10311,
-		Tags:      nostr.Tags{nostr.Tag{"e", actors.CurrentStates, "", "reply"}, nostr.Tag{"e", actors.IgnitionEvent, "", "root"}},
+		Tags:      tags,
 		Content:   state,
 	}
 	e.ID = e.GetID()

@@ -24,10 +24,12 @@ import (
 	"nostrocket/state/rockets"
 )
 
-// todo whenever we receive an out of consensus event: send the latest block headers in reverse order until we get one that works or there are none left.
+// todo don't handle out of consensus events unless our height is > x
+// (not sure how to calculate x yet, but should be something that prevents premature emission of consensus events when something weird happens)
 type EventMap map[string]nostr.Event
 
 var bitcoinBlocks []bblocks
+var highestStateChangeEventSeen int64
 
 type bblocks struct {
 	height int64
@@ -59,6 +61,9 @@ func Publish(event nostr.Event) {
 	go func() {
 		sane := library.ValidateSaneExecutionTime()
 		defer sane()
+		//if event.Kind == 15171010 {
+		//	fmt.Printf("\n%#v\n", event)
+		//}
 		go func() { publishChan <- event }()
 		//fmt.Printf("\n51%#v\n", event)
 	}()
@@ -100,13 +105,27 @@ func handleEvents() {
 						if event.Kind == 1517 {
 							if heightStr, ok := library.GetFirstTag(event, "height"); ok {
 								if height, err := strconv.ParseInt(heightStr, 10, 64); err == nil {
-									bitcoinBlocks = append(bitcoinBlocks, bblocks{
-										height: height,
-										event:  event,
-									})
-									sort.Slice(bitcoinBlocks, func(i, j int) bool {
-										return bitcoinBlocks[i].height > bitcoinBlocks[j].height
-									})
+									if height > blocks.Tip().Height {
+										bitcoinBlocks = append(bitcoinBlocks, bblocks{
+											height: height,
+											event:  event,
+										})
+										sort.Slice(bitcoinBlocks, func(i, j int) bool {
+											return bitcoinBlocks[i].height > bitcoinBlocks[j].height
+										})
+									}
+
+								}
+							}
+							continue
+						}
+						if event.Kind == 10311 {
+							if event.PubKey == actors.MyWallet().Account {
+								if consensusHeight, ok := library.GetFirstTag(event, "consensus"); ok {
+									parsedInt, err := strconv.ParseInt(consensusHeight, 10, 64)
+									if err == nil {
+										highestStateChangeEventSeen = parsedInt
+									}
 								}
 							}
 							continue
@@ -176,7 +195,8 @@ func processStateChangeEventOutOfConsensus(event *nostr.Event) error {
 		return fmt.Errorf("we are probably missing a consensus event")
 	}
 	err := handleEvent(*event, false)
-	if err == nil && !slices.Contains(consensusExceptions, event.Kind) {
+	newConsensusEventNeeded := int64(len(consensustree.GetAllStateChangeEventsInOrder())) >= highestStateChangeEventSeen
+	if err == nil && !slices.Contains(consensusExceptions, event.Kind) && newConsensusEventNeeded {
 		consensusEvent, err := consensustree.CreateNewConsensusEvent(*event)
 		if err != nil {
 			return err
