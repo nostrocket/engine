@@ -19,6 +19,15 @@ func pushCache(e nostr.Event) {
 	publishToBackupRelay(e)
 }
 
+func fetchKind0(account library.Account) (e []nostr.Event) {
+	for _, event := range cache {
+		if event.Kind == 0 && event.PubKey == account {
+			e = append(e, event)
+		}
+	}
+	return
+}
+
 func FetchCache(id string) (e *nostr.Event, r bool) {
 	cacheMu.Lock()
 	defer cacheMu.Unlock()
