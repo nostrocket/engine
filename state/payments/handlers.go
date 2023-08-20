@@ -62,13 +62,22 @@ func handlePaymentProof(event nostr.Event) (m Mapped, e error) {
 		return Mapped{}, err
 	}
 	m.Outbox = append(m.Outbox, meritsMapped)
+
 	//add the payer to the product
+
+	existing := products[zapData.Product.RocketID][zapData.Product.UID]
 	if len(products[zapData.Product.RocketID][zapData.Product.UID].CurrentUsers) == 0 {
-		existing := products[zapData.Product.RocketID][zapData.Product.UID]
 		existing.CurrentUsers = make(map[library.Account]int64)
-		products[zapData.Product.RocketID][zapData.Product.UID] = existing
 	}
+	products[zapData.Product.RocketID][zapData.Product.UID] = existing
 	products[zapData.Product.RocketID][zapData.Product.UID].CurrentUsers[zapData.PayerPubkey] = blocks.Tip().Height
+
+	//tell flamebucket relays to allow this pubkey
+	if !event.GetExtra("fromConsensusEvent").(bool) {
+		if merits.VotepowerInNostrocketForAccount(actors.MyWallet().Account) > 0 {
+			m.Outbox = append(m.Outbox, createRelayAuthEvent(existing))
+		}
+	}
 
 	//create an event to archive the payment request if this is the next one
 	if paymentRequests[zapData.Product.RocketID][zapData.Product.UID].MeritHolder == zapData.PayerPubkey {
