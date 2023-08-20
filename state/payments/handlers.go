@@ -99,10 +99,10 @@ func handlePaymentProof(event nostr.Event) (m Mapped, e error) {
 	mapped := getMapped()
 	m.Payments = mapped.Payments
 	m.Products = mapped.Products
-	fmt.Printf("\n%#v\n", m.Products)
-	for _, outbox := range m.Outbox {
-		fmt.Printf("\n%#v\n", outbox)
-	}
+	//fmt.Printf("\n%#v\n", m.Products)
+	//for _, outbox := range m.Outbox {
+	//	fmt.Printf("\n%#v\n", outbox)
+	//}
 	return
 }
 
