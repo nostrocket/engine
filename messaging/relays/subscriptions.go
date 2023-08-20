@@ -2,7 +2,6 @@ package relays
 
 import (
 	"context"
-	"time"
 
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/sasha-s/go-deadlock"
@@ -38,7 +37,7 @@ func Subscribe(eventID library.Sha256) {
 				//actors.LogCLI(err.Error(), 1)
 				return
 			}
-			ctxsub, cancel := context.WithTimeout(ctx, 15*time.Second)
+			ctxsub, cancel := context.WithCancel(ctx) //WithTimeout(ctx, 15*time.Second)
 			defer cancel()
 			sub, err := relay.Subscribe(ctxsub, filters)
 			if err != nil {
