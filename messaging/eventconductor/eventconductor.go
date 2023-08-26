@@ -146,8 +146,10 @@ func handleEvents() {
 					event, ok := stack.Pop()
 					if ok {
 						for _, block := range bitcoinBlocks {
-							if err := processStateChangeEventOutOfConsensus(&block.event); err == nil {
-								break
+							if block.height > blocks.Tip().Height {
+								if err := processStateChangeEventOutOfConsensus(&block.event); err == nil {
+									break
+								}
 							}
 						}
 						bitcoinBlocks = []bblocks{}
