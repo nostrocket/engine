@@ -318,16 +318,26 @@ func handleOutbox(state any) (mindName string, newMappedState any, exists bool) 
 		for _, outbox := range e.Outbox {
 			switch o := outbox.(type) {
 			case nostr.Event:
-				if ok, _ := o.CheckSignature(); ok {
+				switch o.Kind {
+				case 15179735:
 					Publish(o)
-				}
-				if o.Kind == 15171031 {
+				case 15173340:
+					Publish(o)
+				case 15171010:
+					events, relayUrls := payments.GetAuthEvents()
+					relays.PublishToRelays(events, relayUrls)
+				case 15171031:
 					if len(o.Content) == 64 {
 						relays.Subscribe(o.Content)
 					}
+				default:
+					actors.LogCLI("unhandled event type in outbox", 1)
+					fmt.Printf("\n%#v\n", o)
 				}
 			case merits.Mapped:
-				return "merits", o, true
+				mindName = "merits"
+				newMappedState = o
+				exists = true
 			}
 
 		}
@@ -418,7 +428,7 @@ func routeEvent(e nostr.Event) (mindName string, newState any, err error) {
 		newState, err = problems.HandleEvent(e)
 	case k == 640001:
 		fmt.Printf("\n640001\n%#v\n", e)
-	case k == 3340 || k == 9735 || k == 15179735:
+	case k == 3340 || k == 15173340 || k == 9735 || k == 15179735:
 		mindName = "payments"
 		newState, err = payments.HandleEvent(e)
 	case k == 1:
