@@ -8,9 +8,11 @@ import (
 	"nostrocket/engine/actors"
 	"nostrocket/messaging/blocks"
 	"nostrocket/messaging/eventconductor"
+	"nostrocket/messaging/relays"
 	"nostrocket/state/consensustree"
 	"nostrocket/state/identity"
 	"nostrocket/state/merits"
+	"nostrocket/state/payments"
 	"nostrocket/state/problems"
 	"nostrocket/state/replay"
 )
@@ -103,6 +105,15 @@ func cliListener(interrupt chan struct{}) {
 				actors.LogCLI(err, 2)
 			} else {
 				eventconductor.Publish(eventconductor.CurrentStateEventBuilder(fmt.Sprintf("%s", b)))
+			}
+		case "l":
+			events, relayUrls := payments.GetAuthEvents()
+			relays.PublishToRelays(events, relayUrls)
+			for _, url := range relayUrls {
+				fmt.Println(url)
+			}
+			for _, event := range events {
+				fmt.Printf("\n%#v\n", event)
 			}
 		case "o":
 			cs := eventconductor.GetCurrentStateMap()

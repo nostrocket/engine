@@ -5,6 +5,7 @@ import (
 
 	"github.com/nbd-wtf/go-nostr"
 	"nostrocket/engine/actors"
+	"nostrocket/engine/library"
 )
 
 func createRelayAuthEvent(product Product) (n nostr.Event) {
@@ -13,13 +14,46 @@ func createRelayAuthEvent(product Product) (n nostr.Event) {
 	n.PubKey = actors.MyWallet().Account
 	var allowed []string
 	allowed = append(allowed, "allow")
-	for account, _ := range product.CurrentUsers {
+	for account, _ := range product.ProductData.(Flamebucket).CurrentUsers {
 		allowed = append(allowed, account)
 	}
 	n.Tags = nostr.Tags{allowed}
 	n.Content = ""
 	n.ID = n.GetID()
 	n.Sign(actors.MyWallet().PrivateKey)
+	return
+}
+
+type Flamebucket struct {
+	RelayDeployments map[string]struct{}
+	CurrentUsers     map[library.Account]int64 //bitcoin height when this user was added
+}
+
+func (receiver *Flamebucket) init() {
+	receiver.CurrentUsers = make(map[library.Account]int64)
+	receiver.RelayDeployments = make(map[string]struct{})
+	receiver.RelayDeployments["wss://relay.nostr.me"] = struct{}{} //todo make this an event handler instead of hardcoded
+}
+
+func GetAuthEvents() (n []nostr.Event, relays []string) {
+	currentStateMu.Lock()
+	defer currentStateMu.Unlock()
+	relayMap := make(map[string]struct{})
+	for _, m := range products {
+		for _, product := range m {
+			switch p := product.ProductData.(type) {
+			case Flamebucket:
+				n = append(n, createRelayAuthEvent(product))
+				for s := range p.RelayDeployments {
+					relayMap[s] = struct {
+					}{}
+				}
+			}
+		}
+	}
+	for s := range relayMap {
+		relays = append(relays, s)
+	}
 	return
 }
 

@@ -66,12 +66,18 @@ func handlePaymentProof(event nostr.Event) (m Mapped, e error) {
 	//add the payer to the product
 
 	existing := products[zapData.Product.RocketID][zapData.Product.UID]
-	if len(products[zapData.Product.RocketID][zapData.Product.UID].CurrentUsers) == 0 {
-		existing.CurrentUsers = make(map[library.Account]int64)
+	switch products[zapData.Product.RocketID][zapData.Product.UID].ProductData.(type) {
+	case Flamebucket:
+		if len(products[zapData.Product.RocketID][zapData.Product.UID].ProductData.(Flamebucket).CurrentUsers) == 0 {
+			fb := existing.ProductData.(Flamebucket)
+			fb.CurrentUsers = make(map[library.Account]int64)
+			existing.ProductData = fb
+		}
+		products[zapData.Product.RocketID][zapData.Product.UID] = existing
+		products[zapData.Product.RocketID][zapData.Product.UID].ProductData.(Flamebucket).CurrentUsers[zapData.PayerPubkey] = blocks.Tip().Height
+	default:
+		return Mapped{}, fmt.Errorf("this product doesn't have a type, this should not happen")
 	}
-	products[zapData.Product.RocketID][zapData.Product.UID] = existing
-	products[zapData.Product.RocketID][zapData.Product.UID].CurrentUsers[zapData.PayerPubkey] = blocks.Tip().Height
-
 	//tell flamebucket relays to allow this pubkey
 	if !event.GetExtra("fromConsensusEvent").(bool) {
 		if merits.VotepowerInNostrocketForAccount(actors.MyWallet().Account) > 0 {
@@ -215,11 +221,15 @@ func createProduct(event nostr.Event) (m Mapped, err error) {
 		return m, fmt.Errorf("%s wants to create a product but not signed by a pubkey who is a maintainer on this rocket", event.ID)
 	}
 	existingRocketProducts := rocketQuery[1].(map[library.Sha256]Product)
+	productData := Flamebucket{}
+	productData.init()
 	existingRocketProducts[event.ID] = Product{
 		UID:                event.ID,
 		RocketID:           rocketID,
 		Amount:             sats,
 		ProductInformation: infoID,
+		//todo add more products here and add some way to specify them using the rocket ID or explicitly with an opcode
+		ProductData: productData,
 	}
 	products[rocketID] = existingRocketProducts
 	mapped := getMapped()

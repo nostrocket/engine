@@ -55,7 +55,7 @@ func (c *CurrentState) Wire() (w WireState) {
 						LUD16:    c.Payments.Payments[product.RocketID][product.UID].LUD16,
 						Callback: c.Payments.Payments[product.RocketID][product.UID].CallbackURL,
 					},
-					CurrentUsers: product.CurrentUsers,
+					ProductData: product.ProductData,
 				})
 			}
 		}
@@ -98,7 +98,7 @@ type Product struct {
 	Amount             int64          //price in sats
 	ProductInformation library.Sha256 //ID of event with information about the product
 	NextPayment        NextPayment
-	CurrentUsers       map[library.Account]int64
+	ProductData        any
 }
 
 type NextPayment struct {

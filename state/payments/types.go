@@ -9,9 +9,9 @@ type Product struct {
 	//todo use voting to change price and information
 	UID                library.Sha256
 	RocketID           library.Sha256
-	Amount             int64                     //price in sats
-	ProductInformation library.Sha256            //ID of event with information about the product
-	CurrentUsers       map[library.Account]int64 //bitcoin height when this user expires
+	Amount             int64          //price in sats
+	ProductInformation library.Sha256 //ID of event with information about the product
+	ProductData        any
 }
 
 type PaymentRequest struct {
