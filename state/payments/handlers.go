@@ -37,6 +37,8 @@ func HandleEvent(event nostr.Event) (m Mapped, err error) {
 		//if payments come in too fast its no big deal, no need to verify that the payments are going to the right place, just tally them and update state and let client side figure it out.
 	case 3340:
 		return handleNewPaymentRequest(event)
+	case 15173340:
+		return handleNewPaymentRequest(event)
 	case 15179735:
 		return handlePaymentProof(event)
 	default:
@@ -81,17 +83,16 @@ func handlePaymentProof(event nostr.Event) (m Mapped, e error) {
 	//tell flamebucket relays to allow this pubkey
 	if !event.GetExtra("fromConsensusEvent").(bool) {
 		if merits.VotepowerInNostrocketForAccount(actors.MyWallet().Account) > 0 {
+			//create an event to archive the payment request if this is the next one
+			if paymentRequests[zapData.Product.RocketID][zapData.Product.UID].MeritHolder == zapData.PayerPubkey {
+				requestEvent, err := createPaymentRequestEvent(products[zapData.Product.RocketID][zapData.Product.UID], zapData, getReplayOverride(&event))
+				if err != nil {
+					actors.LogCLI(err, 1)
+				} else {
+					m.Outbox = append(m.Outbox, requestEvent)
+				}
+			}
 			m.Outbox = append(m.Outbox, createRelayAuthEvent(existing))
-		}
-	}
-
-	//create an event to archive the payment request if this is the next one
-	if paymentRequests[zapData.Product.RocketID][zapData.Product.UID].MeritHolder == zapData.PayerPubkey {
-		requestEvent, err := createPaymentRequestEvent(products[zapData.Product.RocketID][zapData.Product.UID], zapData)
-		if err != nil {
-			actors.LogCLI(err, 1)
-		} else {
-			m.Outbox = append(m.Outbox, requestEvent)
 		}
 	}
 
@@ -238,7 +239,7 @@ func createProduct(event nostr.Event) (m Mapped, err error) {
 	//we should actually get the next-payment-address account to do this instead but for now just trust anyone with votepower
 	//so the state of payment is not updated in consensus unless the kind0 is packaged, this solves the problem of missing kind0s during consensus formation
 	if !event.GetExtra("fromConsensusEvent").(bool) {
-		request, err := createPaymentRequestEvent(existingRocketProducts[event.ID], ZapData{})
+		request, err := createPaymentRequestEvent(existingRocketProducts[event.ID], ZapData{}, getReplayOverride(&event))
 		if err != nil {
 			actors.LogCLI(err.Error(), 1)
 		} else {
@@ -247,6 +248,13 @@ func createProduct(event nostr.Event) (m Mapped, err error) {
 		}
 	}
 	return mapped, nil
+}
+
+func getReplayOverride(event *nostr.Event) string {
+	if event.PubKey == actors.MyWallet().Account {
+		return event.ID
+	}
+	return ""
 }
 
 // modify existing product
@@ -284,7 +292,7 @@ func modifyProduct(event nostr.Event) (m Mapped, err error) {
 		products[existingProduct.RocketID] = existingRocketProducts
 		mapped := getMapped()
 		if !event.GetExtra("fromConsensusEvent").(bool) {
-			request, err := createPaymentRequestEvent(existingProduct, ZapData{})
+			request, err := createPaymentRequestEvent(existingProduct, ZapData{}, getReplayOverride(&event))
 			if err != nil {
 				actors.LogCLI(err.Error(), 1)
 			} else {

@@ -202,7 +202,7 @@ func getLatestKind0(account library.Account) (nostr.Event, bool) {
 }
 
 // create an event that generates a new payment request which is to be used to create a zap request
-func createPaymentRequestEvent(product Product, zapData ZapData) (n nostr.Event, e error) {
+func createPaymentRequestEvent(product Product, zapData ZapData, r_override string) (n nostr.Event, e error) {
 	account, err := merits.GetNextPaymentAddress(product.RocketID, product.Amount)
 	if err != nil {
 		return n, err
@@ -231,9 +231,14 @@ func createPaymentRequestEvent(product Product, zapData ZapData) (n nostr.Event,
 	}
 	n.CreatedAt = nostr.Timestamp(time.Now().Unix())
 	n.PubKey = actors.MyWallet().Account
-	n.Kind = 3340
+	n.Kind = 15173340
 	tags := nostr.Tags{}
-	tags = append(tags, nostr.Tag{"r", replay.GetCurrentHashForAccount(actors.MyWallet().Account)})
+	if len(r_override) == 64 {
+		tags = append(tags, nostr.Tag{"r", r_override})
+	} else {
+		tags = append(tags, nostr.Tag{"r", replay.GetCurrentHashForAccount(actors.MyWallet().Account)})
+	}
+
 	//tags = append(tags, nostr.Tag{"op", "payments.newrequest.invoice", invoice})
 	tags = append(tags, nostr.Tag{"op", "payments.newrequest.rocket", product.RocketID})
 	tags = append(tags, nostr.Tag{"op", "payments.newrequest.product", product.UID})

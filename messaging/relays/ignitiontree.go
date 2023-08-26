@@ -51,7 +51,7 @@ L:
 			if e.Kind == 21069 {
 				//fmt.Println("SENDING KEEPALIVE EVENT")
 			}
-			if e.Kind == 3340 {
+			if e.Kind == 3340 || e.Kind == 15173340 {
 				actors.LogCLI(fmt.Sprintf("publishing payment request event %s", e.ID), 4)
 			}
 			go func() {
