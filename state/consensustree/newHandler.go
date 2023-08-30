@@ -5,6 +5,7 @@ package consensustree
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"sort"
 	"time"
 
@@ -42,11 +43,11 @@ func HandleConsensusEvent(e nostr.Event, scEvent chan library.Sha256, scResult c
 	//if unmarshalled.StateChangeEventID == "4024142b07bc3809361ae3792672ee1c827b6c58ec828611fa34d973e9eb7945" {
 	//	debug = true
 	//}
-	//evts := []string{"e09c2ff9603dbec5ac6bf9ad5be33e01a647cd231e27790c54e5ca40561a4714"}
-	//if slices.Contains(evts, unmarshalled.StateChangeEventID) || slices.Contains(evts, e.ID) {
-	//	cPublish <- helpers.DeleteEvent(e.ID, "invalid state change event")
-	//	return nil
-	//}
+	evts := []string{"d3d385de351f938916b627d316f3f0b175003a5964a34b0909ca101427424e9c", "24eb82179c33ec6c87d418ae6bf455a4f4aa235dc448e6b269c0bce93e393d5d", "5225b34e2938f9080035322e3f6f6a5e43319d60a50f3dde314c8042eb46ae2e"}
+	if slices.Contains(evts, unmarshalled.StateChangeEventID) || slices.Contains(evts, e.ID) {
+		cPublish <- helpers.DeleteEvent(e.ID, "invalid state change event")
+		return nil
+	}
 	currentState.mutex.Lock()
 	defer currentState.mutex.Unlock()
 	return handleNewConsensusEvent(unmarshalled, e, scEvent, scResult, cPublish, localEvent)

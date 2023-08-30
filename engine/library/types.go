@@ -12,6 +12,8 @@ type RocketID = string
 
 type Sha256 = string
 
+type Sha1 = string
+
 type Profile struct {
 	Name         string `json:"name"`
 	Picture      string `json:"picture"`

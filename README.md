@@ -31,6 +31,7 @@ nostr.Event{
     Content:"", 
     Sig:"bd7261a62efbb6eb2835a8643d3a03b38a2c6ae658f28dd541ec34ac8fd9c4b39804c2cdd11812fef848a0f1b9dd24dbe8b86df1ac26a8e64e8128cd34859eaa"
 ```
+Truthchain aspects have not been implemented yet.
 
 ### Running Nostrocket Engine
 Ensure you have the latest version of Golang installed for your system, and run:

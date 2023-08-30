@@ -90,3 +90,58 @@ func FetchLatestProfile(account library.Account) (n nostr.Event, b bool) {
 	}
 	return
 }
+
+func FetchEvents(relays []string, filters nostr.Filters) (n []nostr.Event) {
+	sane := library.ValidateSaneExecutionTime()
+	defer sane()
+	events := make(map[string]nostr.Event)
+	eventsMu := &deadlock.Mutex{}
+	wait := &deadlock.WaitGroup{}
+	for _, url := range relays {
+		wait.Add(1)
+		go func(url string) {
+			defer wait.Done()
+			ctx := context.Background()
+			relay, err := nostr.RelayConnect(ctx, url)
+			if err != nil {
+				//actors.LogCLI(err.Error(), 1)
+				return
+			}
+			ctxsub, cancel := context.WithTimeout(ctx, 5*time.Second)
+			defer cancel()
+			sub, err := relay.Subscribe(ctxsub, filters)
+			if err != nil {
+				actors.LogCLI(err.Error(), 1)
+				return
+			}
+		L:
+			for {
+				select {
+				case ev := <-sub.Events:
+					eventsMu.Lock()
+					events[ev.ID] = *ev
+					eventsMu.Unlock()
+					if len(filters[0].IDs) == len(events) && len(events) > 0 {
+						go func() {
+							sub.Close()
+							relay.Close()
+						}()
+						break L
+					}
+				case <-time.After(time.Second * 2):
+					go func() {
+						sub.Close()
+						relay.Close()
+					}()
+					break L
+				}
+			}
+
+		}(url)
+	}
+	wait.Wait()
+	for _, event := range events {
+		n = append(n, event)
+	}
+	return
+}

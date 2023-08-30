@@ -28,6 +28,19 @@ func GetFirstReply(e nostr.Event) (string, bool) {
 	return "", false
 }
 
+func GetRoot(e nostr.Event) (string, bool) {
+	for _, tag := range e.Tags {
+		for i, s := range tag {
+			if s == "root" {
+				if i == 3 {
+					return tag[1], true
+				}
+			}
+		}
+	}
+	return "", false
+}
+
 func GetAllReplies(e nostr.Event) (r []string) {
 	for _, tag := range e.Tags {
 		for i, s := range tag {
@@ -62,4 +75,15 @@ func GetOpData(e nostr.Event, opcode string) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+func GetTagSlice(e nostr.Event, t string) (r []string) {
+	for _, tag := range e.Tags {
+		for _, s := range tag {
+			if s == t {
+				r = tag[1:]
+			}
+		}
+	}
+	return
 }
