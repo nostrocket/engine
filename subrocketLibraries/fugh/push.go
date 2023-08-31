@@ -8,6 +8,7 @@ import (
 	"golang.org/x/exp/slices"
 	"nostrocket/engine/actors"
 	"nostrocket/engine/library"
+	"nostrocket/messaging/relays"
 )
 
 func (r *Repo) CreateRepoEvent() (nostr.Event, error) {
@@ -70,6 +71,20 @@ func (b *Branch) CreateBranchEvent(r *Repo) (nostr.Event, error) {
 	return branch, nil
 }
 
+func (r *Repo) FetchAllEvents() (n []nostr.Event, err error) {
+	tm := make(nostr.TagMap)
+	tm["a"] = []string{"31228:" + r.CreatedBy + ":" + r.DTag}
+	n = relays.FetchEvents([]string{"wss://nostr.688.org"}, nostr.Filters{nostr.Filter{
+		//Kinds: []int{31228},
+		Tags: tm,
+		//IDs: []string{repoID},
+	}})
+	if len(n) == 0 {
+		return nil, fmt.Errorf("no events found")
+	}
+	return
+}
+
 type Branch struct {
 	Name    string           //name of this branch in plaintext, MUST not contain spaces
 	Head    library.Sha1     //commit identifier
@@ -80,6 +95,7 @@ type Branch struct {
 }
 
 type Repo struct {
+	CreatedBy    library.Account
 	Name         string
 	DTag         library.Sha256    //random hash
 	UpstreamDTag library.Sha256    //the upstream repository, only used if this is a fork

@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/spf13/viper"
@@ -24,20 +23,34 @@ func main() {
 	actors.InitConfig(conf)
 	//make the config accessible globally
 	actors.SetConfig(conf)
-	fmt.Println("Current wallet: " + actors.MyWallet().Account)
+	fmt.Println("Current pubkey: " + actors.MyWallet().Account)
 	r, err := fetchRepo("81af21763dbe36827e89ac2e1757c484238979be126b564002f56022f267b09e")
 	if err != nil {
 		actors.LogCLI(err, 0)
 	}
 	fmt.Printf("\n%#v\n", r)
-	e, err := r.CreateRepoEvent()
+	rEvents, err := r.FetchAllEvents()
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("\n%#v\n", e)
-	sender := actors.StartRelaysForPublishing([]string{"wss://nostr.688.org"})
-	sender <- e
-	time.Sleep(time.Second * 10)
+	for _, event := range rEvents {
+		if event.Kind == 31227 {
+			branch, err := fugh.GetBranchFromEvent(event)
+			if err != nil {
+				panic(err)
+			}
+			fmt.Printf("\n%#v\n", branch)
+		}
+	}
+	//e, err := r.CreateRepoEvent()
+	//if err != nil {
+	//	panic(err)
+	//}
+	//fmt.Printf("\n%#v\n", e)
+	//sender := actors.StartRelaysForPublishing([]string{"wss://nostr.688.org"})
+	//sender <- e
+	//time.Sleep(time.Second * 10)
+
 	//repoPath := "/Users/gareth/git/nostrocket/test/fugh"
 	//treeSHA, err := fugh.GetFirstTreeSHA(repoPath)
 	//if err != nil {
