@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/spf13/viper"
@@ -28,7 +29,24 @@ func main() {
 	if err != nil {
 		actors.LogCLI(err, 0)
 	}
-	fmt.Printf("\n%#v\n", r)
+	c := fugh.Commit{
+		GID:          "81af21763dbe36827e89ac2e1757c484238979be",
+		Author:       r.CreatedBy,
+		Committer:    r.CreatedBy,
+		Message:      "testing a commit",
+		ParentIDs:    nil,
+		TreeID:       "1757c484238979be126b564002f56022f267b09e",
+		LegacyBackup: "this will be the full text of a commit that was not produced by this tool",
+	}
+	fmt.Println("start")
+	st := time.Now()
+	event, err := c.Event(&r)
+	if err != nil {
+		return
+	}
+	fmt.Printf("exec time %s", time.Since(st).String())
+	fmt.Printf("\n%#v\n", event)
+	os.Exit(0)
 	rEvents, err := r.FetchAllEvents()
 	if err != nil {
 		panic(err)
@@ -39,95 +57,104 @@ func main() {
 			if err != nil {
 				panic(err)
 			}
-			fmt.Printf("\n%#v\n", branch)
+			r.LocalDir = "/Users/gareth/git/nostrocket/test/fugh_test"
+			r.GetAllBlobs(&branch)
+
+			//fmt.Printf("\n%#v\nUpdated %f minutes ago\n", branch, time.Since(time.Unix(branch.LastUpdate, 0)).Minutes())
+			//branchEvent, err := branch.Event(&r)
+			//if err != nil {
+			//	panic(err)
+			//}
+
+			//sender := actors.StartRelaysForPublishing([]string{"wss://nostr.688.org"})
+			//sender <- branchEvent
+			//time.Sleep(time.Second * 10)
 		}
 	}
-	//e, err := r.CreateRepoEvent()
-	//if err != nil {
-	//	panic(err)
-	//}
-	//fmt.Printf("\n%#v\n", e)
-	//sender := actors.StartRelaysForPublishing([]string{"wss://nostr.688.org"})
-	//sender <- e
-	//time.Sleep(time.Second * 10)
-
-	//repoPath := "/Users/gareth/git/nostrocket/test/fugh"
-	//treeSHA, err := fugh.GetFirstTreeSHA(repoPath)
-	//if err != nil {
-	//	actors.LogCLI(err, 0)
-	//}
-	//
-	////fmt.Println("First tree SHA:", treeSHA)
-	//
-	//identifiers, err := fugh.GetBlobIdentifiers(repoPath, treeSHA)
-	//if err != nil {
-	//	actors.LogCLI(err, 1)
-	//}
-	//for _, identifier := range identifiers {
-	//	fmt.Println(identifier)
-	//}
-	//
-	//blob, err := fugh.GetBinaryBlob(repoPath, identifiers[0])
-	//if err != nil {
-	//	actors.LogCLI(err, 1)
-	//}
-	//fmt.Printf("40: %s", blob)
-	//
-	//sha1Hash := sha1.Sum(blob)
-	//sha1HashString := hex.EncodeToString(sha1Hash[:])
-	//
-	//fmt.Printf("SHA1: %s\n", sha1HashString)
-	//
-	//blobMap, err := fugh.CreateBlobMap(repoPath)
-	//if err != nil {
-	//	actors.LogCLI(err, 1)
-	//}
-	//var saved int
-	//var total int
-	//for s, b := range blobMap {
-	//	c, err := compressBytes(b)
-	//	if err != nil {
-	//		actors.LogCLI(err, 1)
-	//	}
-	//	total += len(b)
-	//	saved += len(b) - len(c)
-	//	fmt.Printf("blob ID: %s\n%x\n\n", s, c)
-	//}
-	//
-	////repo := fugh.Repo{}
-	////repo.Maintainers = append(repo.Maintainers, actors.MyWallet().Account)
-	////repo.DTag = library.Random()
-	////repo.Name = "testing"
-	////e, err := repo.CreateRepoEvent()
-	////if err != nil {
-	////	actors.LogCLI(err, 0)
-	////}
-	////fmt.Printf("\n%#v\n", e)
-	////sender := actors.StartRelaysForPublishing([]string{"wss://nostr.688.org"})
-	////sender <- e
-	//branch := fugh.Branch{
-	//	Name:    "master",
-	//	Head:    "",
-	//	Root:    "4c467d089f8a4f3c0bce308a3ddc6f3bcc376aaeecd6991af0b449ffa79e0e3a",
-	//	ATag:    "31228:546b4d7f86fe2c1fcc7eb10bf96c2eaef1daa26c67dad348ff0e9c853ffe8882:81af21763dbe36827e89ac2e1757c484238979be126b564002f56022f267b09e",
-	//	DTag:    library.Random(),
-	//	Commits: nil,
-	//	Length:  0,
-	//}
-	//b, err := branch.CreateBranchEvent(&fugh.Repo{
-	//	Anchor:      "4c467d089f8a4f3c0bce308a3ddc6f3bcc376aaeecd6991af0b449ffa79e0e3a",
-	//	Maintainers: []string{actors.MyWallet().Account},
-	//})
-	//if err != nil {
-	//	actors.LogCLI(err, 0)
-	//}
-	//fmt.Printf("\n%#v\n", b)
-	//sender := actors.StartRelaysForPublishing([]string{"wss://nostr.688.org"})
-	//sender <- b
-	//time.Sleep(time.Second * 10)
 }
 
-func fetchRepo(repoDTag string) (fugh.Repo, error) {
+//e, err := r.Event()
+//if err != nil {
+//	panic(err)
+//}
+//fmt.Printf("\n%#v\n", e)
+
+//repoPath := "/Users/gareth/git/nostrocket/test/fugh_test"
+//treeSHA, err := fugh.GetFirstTreeSHA(repoPath)
+//if err != nil {
+//	actors.LogCLI(err, 0)
+//}
+//
+////fmt.Println("First tree SHA:", treeSHA)
+//
+//identifiers, err := fugh.GetBlobIdentifiers(repoPath, treeSHA)
+//if err != nil {
+//	actors.LogCLI(err, 1)
+//}
+//for _, identifier := range identifiers {
+//	fmt.Println(identifier)
+//}
+//
+//blob, err := fugh.GetBinaryBlob(repoPath, identifiers[0])
+//if err != nil {
+//	actors.LogCLI(err, 1)
+//}
+//fmt.Printf("40: %s", blob)
+//
+//sha1Hash := sha1.Sum(blob)
+//sha1HashString := hex.EncodeToString(sha1Hash[:])
+//
+//fmt.Printf("SHA1: %s\n", sha1HashString)
+//
+//blobMap, err := fugh.CreateBlobMap(repoPath)
+//if err != nil {
+//	actors.LogCLI(err, 1)
+//}
+//var saved int
+//var total int
+//for s, b := range blobMap {
+//	c, err := compressBytes(b)
+//	if err != nil {
+//		actors.LogCLI(err, 1)
+//	}
+//	total += len(b)
+//	saved += len(b) - len(c)
+//	fmt.Printf("blob ID: %s\n%x\n\n", s, c)
+//}
+//
+////repo := fugh.RepoAnchor{}
+////repo.Maintainers = append(repo.Maintainers, actors.MyWallet().Account)
+////repo.DTag = library.Random()
+////repo.Name = "testing"
+////e, err := repo.Event()
+////if err != nil {
+////	actors.LogCLI(err, 0)
+////}
+////fmt.Printf("\n%#v\n", e)
+////sender := actors.StartRelaysForPublishing([]string{"wss://nostr.688.org"})
+////sender <- e
+//branch := fugh.Branch{
+//	Name:    "master",
+//	Head:    "",
+//	Root:    "4c467d089f8a4f3c0bce308a3ddc6f3bcc376aaeecd6991af0b449ffa79e0e3a",
+//	ATag:    "31228:546b4d7f86fe2c1fcc7eb10bf96c2eaef1daa26c67dad348ff0e9c853ffe8882:81af21763dbe36827e89ac2e1757c484238979be126b564002f56022f267b09e",
+//	DTag:    library.Random(),
+//	Commits: nil,
+//	Length:  0,
+//}
+//b, err := branch.Event(&fugh.RepoAnchor{
+//	Anchor:      "4c467d089f8a4f3c0bce308a3ddc6f3bcc376aaeecd6991af0b449ffa79e0e3a",
+//	Maintainers: []string{actors.MyWallet().Account},
+//})
+//if err != nil {
+//	actors.LogCLI(err, 0)
+//}
+//fmt.Printf("\n%#v\n", b)
+//sender := actors.StartRelaysForPublishing([]string{"wss://nostr.688.org"})
+//sender <- b
+//time.Sleep(time.Second * 10)
+
+func fetchRepo(repoDTag string) (fugh.RepoAnchor, error) {
 	tm := make(nostr.TagMap)
 	tm["d"] = []string{repoDTag}
 	n := relays.FetchEvents([]string{"wss://nostr.688.org"}, nostr.Filters{nostr.Filter{
@@ -139,11 +166,11 @@ func fetchRepo(repoDTag string) (fugh.Repo, error) {
 		fmt.Printf("\n%#v\n", n[0])
 		r, err := fugh.GetRepoFromEvent(n[0])
 		if err != nil {
-			return fugh.Repo{}, err
+			return fugh.RepoAnchor{}, err
 		}
 		return r, nil
 	}
-	return fugh.Repo{}, fmt.Errorf("could not find repo event")
+	return fugh.RepoAnchor{}, fmt.Errorf("could not find repo event")
 }
 
 func compressBytes(input []byte) ([]byte, error) {

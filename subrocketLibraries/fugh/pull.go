@@ -8,23 +8,24 @@ import (
 	"nostrocket/engine/library"
 )
 
-func GetRepoFromEvent(event nostr.Event) (r Repo, err error) {
+func GetRepoFromEvent(event nostr.Event) (r RepoAnchor, err error) {
 	name, ok := library.GetFirstTag(event, "name")
 	if !ok {
-		return Repo{}, fmt.Errorf("could not find repo name")
+		return RepoAnchor{}, fmt.Errorf("could not find repo name")
 	}
 	d, ok := library.GetFirstTag(event, "d")
 	if !ok {
-		return Repo{}, fmt.Errorf("could not find repo d tag")
+		return RepoAnchor{}, fmt.Errorf("could not find repo d tag")
 	}
 	maintainers := library.GetTagSlice(event, "maintainers")
 	if len(maintainers) == 0 {
-		return Repo{}, fmt.Errorf("could not find repo maintainers")
+		return RepoAnchor{}, fmt.Errorf("could not find repo maintainers")
 	}
 	r.Name = name
 	r.Maintainers = maintainers
 	r.DTag = d
 	r.CreatedBy = event.PubKey
+	r.LastUpdate = event.CreatedAt.Time().Unix()
 	forknode, ok := library.GetFirstTag(event, "forknode")
 	if ok && len(forknode) == 40 {
 		r.ForkedAt = forknode
@@ -56,6 +57,7 @@ func GetBranchFromEvent(event nostr.Event) (r Branch, err error) {
 	r.ATag = a
 	r.Name = name
 	r.DTag = d
+	r.LastUpdate = event.CreatedAt.Time().Unix()
 	head, ok := library.GetFirstTag(event, "head")
 	if ok && len(head) == 40 {
 		r.Head = head
