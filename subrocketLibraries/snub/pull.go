@@ -1,4 +1,4 @@
-package fugh
+package snub
 
 import (
 	"fmt"

@@ -63,13 +63,25 @@ func InitConfig(config *viper.Viper) {
 }
 
 func initRootDir(conf *viper.Viper) {
-	_, err := os.Stat(conf.GetString("rootDir"))
-	if os.IsNotExist(err) {
-		err = os.Mkdir(conf.GetString("rootDir"), 0755)
-		if err != nil {
-			LogCLI(err, 0)
-		}
+	if err := CreateDirectoryIfNotExists(conf.GetString("rootDir")); err != nil {
+		LogCLI(err, 0)
 	}
+}
+
+func CreateDirectoryIfNotExists(path string) error {
+	_, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			err = os.Mkdir(path, 0755)
+			if err != nil {
+				return err
+			}
+			return nil
+		}
+		return err
+	}
+
+	return nil
 }
 
 var conf *viper.Viper
