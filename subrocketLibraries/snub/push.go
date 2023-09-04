@@ -94,10 +94,10 @@ func (b *Branch) Event(r *RepoAnchor) (nostr.Event, error) {
 	return branch, nil
 }
 
-func (r *RepoAnchor) FetchAllEvents() (n []nostr.Event, err error) {
+func (r *Repo) FetchAllEvents() (n []nostr.Event, err error) {
 	tm := make(nostr.TagMap)
-	tm["a"] = []string{"31228:" + r.CreatedBy + ":" + r.DTag}
-	n = relays.FetchEvents([]string{"wss://nostr.688.org"}, nostr.Filters{nostr.Filter{
+	tm["a"] = []string{"31228:" + r.Anchor.CreatedBy + ":" + r.Anchor.DTag}
+	n = relays.FetchEvents(r.Config.GetStringSlice("relays"), nostr.Filters{nostr.Filter{
 		//Kinds: []int{31228},
 		Tags: tm,
 		//IDs: []string{repoID},
@@ -128,12 +128,15 @@ func (c *Commit) Event(ra *RepoAnchor) (commit nostr.Event, err error) {
 			nostr.Tag{"gid", c.GID},
 			nostr.Tag{"tree", c.TreeID},
 			nostr.Tag{"a", ra.childATag()},
-			nostr.Tag{"author", c.Author.string()},
-			nostr.Tag{"committer", c.Committer.string()},
+			c.Author.tag(),
+			c.Committer.tag(),
 			//nostr.Tag{"legacy", c.LegacyBackup}, //I think we might not need this, hashes seem to always work
 			c.parentTag(),
 		},
 		Content: c.Message,
+	}
+	if len(c.LegacyBackup) > 0 {
+		commit.Tags = append(commit.Tags, nostr.Tag{"legacy", c.LegacyBackup})
 	}
 	makeNonce(&commit, c.GID)
 	err = commit.Sign(actors.MyWallet().PrivateKey)
@@ -144,6 +147,7 @@ func (c *Commit) Event(ra *RepoAnchor) (commit nostr.Event, err error) {
 }
 
 func makeNonce(event *nostr.Event, objectID string) {
+	actors.LogCLI(fmt.Sprintf("mining event ID to match git object identifier: %s", objectID[0:4]), 4)
 	event.Tags = append(event.Tags, nostr.Tag{})
 	var nonce int64
 	for {

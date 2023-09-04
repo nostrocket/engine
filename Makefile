@@ -11,3 +11,11 @@ debug:
 blocks:
 	go mod tidy
 	go run cmd/blocks/*.go
+
+installblocks:
+	go mod tidy
+	go install cmd/blocks/*.go
+
+snub:
+	go mod tidy
+	go install cmd/snub2/*.go

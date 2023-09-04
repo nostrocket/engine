@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/nbd-wtf/go-nostr"
 	"github.com/spf13/viper"
-	"nostrocket/engine/actors"
 	"nostrocket/engine/library"
 )
 
@@ -40,36 +40,6 @@ func (r *Repo) Init() error {
 	return nil
 }
 
-func (r *Repo) initConfig() error {
-	r.Config = viper.New()
-	if fmt.Sprintf("%c", r.Anchor.LocalDir[len(r.Anchor.LocalDir)-1]) != "/" {
-		r.Anchor.LocalDir = r.Anchor.LocalDir + "/"
-	}
-	r.Config.SetDefault("repoPath", r.Anchor.LocalDir)
-	r.Config.SetDefault("snubPath", r.Config.GetString("repoPath")+".snub/")
-	err := actors.CreateDirectoryIfNotExists(r.Config.GetString("snubPath"))
-	if err != nil {
-		return err
-	}
-	r.Config.SetConfigType("yaml")
-	r.Config.SetConfigFile(r.Config.GetString("snubPath") + "config.yaml")
-	err = r.Config.ReadInConfig()
-	if err != nil {
-		actors.LogCLI(err.Error(), 4)
-	}
-	r.Config.SetDefault("firstRun", true)
-	r.Config.SetDefault("dTag", r.Anchor.DTag)
-	err = library.Touch(r.Config.GetString("snubPath") + "config.yaml")
-	if err != nil {
-		return err
-	}
-	err = r.Config.WriteConfig()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 type Commit struct {
 	//how do we get commits from events and parse them into git objects? hash-object?
 	//git cat-file -p df5af114df19730dc1d2936e5819e07273182a76  | git hash-object -t commit --stdin
@@ -89,8 +59,8 @@ func (c *Commit) String() (s string) {
 	for _, d := range c.ParentIDs {
 		s += "parent " + d + "\n"
 	}
-	s += "author " + c.Author.string() + "\n"
-	s += "committer " + c.Committer.string() + "\n"
+	s += c.Author.string() + "\n"
+	s += c.Committer.string() + "\n"
 	if len(c.LegacySig) > 0 {
 		s += "gpgsig " + c.LegacySig
 	}
@@ -104,10 +74,16 @@ type LegacyIdentification struct {
 	Email     string
 	Timestamp int64
 	UTCoffset string
+	Type      string //author | committer
 }
 
 func (l *LegacyIdentification) string() string {
-	return fmt.Sprintf("%s <%s> %d %s", l.Name, l.Email, l.Timestamp, l.UTCoffset)
+	return fmt.Sprintf("%s %s <%s> %d %s", l.Type, l.Name, l.Email, l.Timestamp, l.UTCoffset)
+}
+
+func (l *LegacyIdentification) tag() (t nostr.Tag) {
+	t = append(t, l.Type, l.Name, l.Email, fmt.Sprintf("%d", l.Timestamp), l.UTCoffset)
+	return
 }
 
 type Tree struct {

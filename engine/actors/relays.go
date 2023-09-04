@@ -16,22 +16,33 @@ func StartRelaysForPublishing(relays []string) chan nostr.Event {
 			panic(err)
 		}
 		go func() {
-			select {
-			case e := <-chans[len(chans)-1]:
-				_, err := relay.Publish(context.Background(), e)
-				if err != nil {
-					LogCLI(err.Error(), 2)
+			for {
+				select {
+				case e := <-chans[len(chans)-1]:
+					_, err := relay.Publish(context.Background(), e)
+					if err != nil {
+						LogCLI(err.Error(), 2)
+						//if errchan, ok := e.GetExtra("errors").(chan error); ok {
+						//	errchan <- err
+						//	continue
+						//}
+					}
+					//if successChan, ok := e.GetExtra("success").(chan bool); ok {
+					//	successChan <- true
+					//}
 				}
 			}
 		}()
 	}
 	go func() {
-		select {
-		case e := <-sendChan:
-			for _, events := range chans {
-				go func(e nostr.Event, events chan nostr.Event) {
-					events <- e
-				}(e, events)
+		for {
+			select {
+			case e := <-sendChan:
+				for _, eventChan := range chans {
+					//go func(e nostr.Event, eventChan chan nostr.Event) {
+					eventChan <- e
+					//}(e, eventChan)
+				}
 			}
 		}
 	}()

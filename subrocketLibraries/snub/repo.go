@@ -2,7 +2,6 @@ package snub
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -59,7 +58,6 @@ func BuildFromExistingRepo(options NewRepoOptions) (r Repo, err error) {
 		if err != nil {
 			return Repo{}, err
 		}
-		r.Commits[data.GID] = *data
 		if data.GID != d {
 			panic(62)
 		}
@@ -71,10 +69,24 @@ func BuildFromExistingRepo(options NewRepoOptions) (r Repo, err error) {
 			return Repo{}, err
 		}
 		if hash != data.GID {
-			fmt.Println("fail")
-			fmt.Println(hash)
-			fmt.Println(data.GID)
-			ioutil.WriteFile("ourStrings/"+data.GID, []byte(data.String()), 0644)
+			actors.LogCLI(fmt.Sprintf("could not replicate git identifier, storing the original commit data as compressed binary for object %s", data.GID), 3)
+			cbytes, err := getCommitBytes(data.GID)
+			if err != nil {
+				return Repo{}, err
+			}
+			compressed, err := compressBytes(cbytes)
+			if err != nil {
+				return Repo{}, err
+			}
+			data.LegacyBackup = fmt.Sprintf("%x", compressed)
+			//fmt.Println("fail")
+			//fmt.Println(hash)
+			//fmt.Println(data.GID)
+			//ioutil.WriteFile("ourStrings/"+data.GID, []byte(data.String()), 0644)
+			//if err != nil {
+			//	return Repo{}, err
+			//}
+			//ioutil.WriteFile("theirStrings/"+data.GID, cbytes, 0644)
 		}
 		//if plumbing.ComputeHash(1, []byte(data.String())).String() != data.GID {
 		//	fmt.Println(len(r.Commits))
@@ -85,6 +97,7 @@ func BuildFromExistingRepo(options NewRepoOptions) (r Repo, err error) {
 		//	fmt.Println(data.LegacyBackup)
 		//	return Repo{}, fmt.Errorf("failed to calculate the correct hash")
 		//}
+		r.Commits[data.GID] = *data
 	}
 	//get full data for each commit
 

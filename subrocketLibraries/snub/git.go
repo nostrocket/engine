@@ -181,8 +181,8 @@ func getAllCommitIDs(r *git.Repository, commitID string) ([]string, error) {
 			}
 
 			// Recursively call the function for each parent commit
-			//todo remove 10k limit after testing complete
-			if len(commitIDs) < 10000 {
+			//todo remove 1k limit after testing complete
+			if len(commitIDs) < 1000 {
 				iterateParents(parentCommit)
 			}
 		}
@@ -198,6 +198,16 @@ func getAllCommitIDs(r *git.Repository, commitID string) ([]string, error) {
 	}
 
 	return result, nil
+}
+
+func getCommitBytes(commitSha1 string) ([]byte, error) {
+	commitCmd := exec.Command("git", "cat-file", "-p", commitSha1)
+	output, err := commitCmd.Output()
+	if err != nil {
+		return nil, err
+	}
+
+	return output, nil
 }
 
 func getCommitData(commitSha1 string) (*Commit, error) {
@@ -287,7 +297,9 @@ func getCommitData2(commitSha1 string, repo *git.Repository) (*Commit, error) {
 	commitData := &Commit{}
 	commitData.GID = commitObj.Hash.String()
 	commitData.Author = parseSignature(commitObj.Author)
+	commitData.Author.Type = "author"
 	commitData.Committer = parseSignature(commitObj.Committer)
+	commitData.Committer.Type = "committer"
 	commitData.Message = commitObj.Message
 	//commitData.ParentIDs = commitObj.ParentHashes
 	for _, hash := range commitObj.ParentHashes {
@@ -295,12 +307,13 @@ func getCommitData2(commitSha1 string, repo *git.Repository) (*Commit, error) {
 	}
 	commitData.TreeID = commitObj.TreeHash.String()
 	//commitData.LegacyBackup = commitObj.File()
+	commitObj.String()
 	if len(commitObj.PGPSignature) > 0 {
 		lines := strings.Split(commitObj.PGPSignature, "\n")
 		var formattedSig string
 		var linesAfterPGP int64
 		for i, line := range lines {
-			if linesAfterPGP > 0 {
+			if linesAfterPGP > 0 && i != len(lines)-1 {
 				line = " " + line
 				linesAfterPGP++
 			}
