@@ -96,6 +96,15 @@ For configuration options, look in `~/nostrocket/config.yaml` and `<repo>/.snub/
 
 To use a different pubkey other than the one that was automatically generated, modify the pubkey and private key in `~/nostrocket/wallet.dat`
 
+### Using a local relay
+This is highly recommended for the moment, don't really want to spam everyone's relays.
+```
+git clone https://github.com/nostrocket/flamebucket.git
+cd flamebucket
+./install.sh
+./start_local_relay.sh
+```
+
 ### Events
 ``` 
 -----THIS IS A REPOSITORY ANCHOR EVENT-----

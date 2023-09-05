@@ -13,20 +13,23 @@ import (
 )
 
 func Publish(options NewRepoOptions) error {
+	actors.LogCLI("Loading configuration", 4)
 	LoadRocketConfig()
 	if len(options.Path) == 0 {
 		options.Path = GetCurrentDirectory()
 	}
+	actors.LogCLI("Building a representation of local repository", 4)
 	repo, err := BuildFromExistingRepo(options)
 	if err != nil {
 		return err
 	}
+	actors.LogCLI("Starting Relays", 4)
 	repo.Sender = actors.StartRelaysForPublishing(repo.Config.GetStringSlice("relays"))
 	head, err := repo.Git.Head()
 	if err != nil {
 		return err
 	}
-	actors.LogCLI(fmt.Sprintf("HEAD commit: %s", head), 4)
+	actors.LogCLI(fmt.Sprintf("HEAD commit found: %s", head), 4)
 	//for _, commit := range repo.CommitEventIDs {
 	//	event, err := commit.Event(&repo.Anchor)
 	//	if err != nil {
@@ -34,6 +37,7 @@ func Publish(options NewRepoOptions) error {
 	//	}
 	//	fmt.Printf("\n%s\n\n", event)
 	//}
+	actors.LogCLI("Building local branch objects", 4)
 	branchName, err := GetCurrentBranch(repo.Anchor.LocalDir)
 	if err != nil {
 		return err
@@ -46,6 +50,7 @@ func Publish(options NewRepoOptions) error {
 		return fmt.Errorf("HEAD for %s is %s, but current HEAD is %s", branchName, branch.Head, head.Hash().String())
 	}
 	//GET AND PUBLISH COMMITS
+	actors.LogCLI("Building local commit objects", 4)
 	var include []library.Sha1
 	for sha1, sha256 := range branch.CommitGitIDs {
 		//this should generate a list of commits for which events do not exist on our relays
@@ -53,6 +58,7 @@ func Publish(options NewRepoOptions) error {
 			include = append(include, sha1)
 		}
 	}
+	actors.LogCLI("Publishing commit objects", 4)
 	err = repo.makeCommitEventsAndPublishToRelays(include)
 	if err != nil {
 		return err
@@ -75,6 +81,7 @@ func Publish(options NewRepoOptions) error {
 	for _, sha1 := range include {
 		published = append(published, repo.Branches[branch.Name].CommitGitIDs[sha1])
 	}
+	actors.LogCLI("Checking that the objects were all published", 4)
 	eventsFromRelay := relays.FetchEvents(repo.Config.GetStringSlice("relays"), nostr.Filters{
 		nostr.Filter{
 			IDs: published,
@@ -100,6 +107,7 @@ func Publish(options NewRepoOptions) error {
 	}
 
 	//GET AND PUBLISH TREES
+
 	commit, err := repo.getTreeFromCommit(branch.Head)
 	if err != nil {
 		return err
@@ -120,11 +128,12 @@ func Publish(options NewRepoOptions) error {
 			blobs = append(blobs, sha1)
 		}
 	}
+	actors.LogCLI("Building local tree objects and sending to relays", 4)
 	err = repo.makeTreeEventsAndPublishToRelays(trees, blobs)
 	if err != nil {
 		return err
 	}
-
+	actors.LogCLI("Building local blob objects and sending to relays", 4)
 	err = repo.makeBlobEventsAndPublishToRelays(blobs)
 	if err != nil {
 		return err
@@ -152,6 +161,7 @@ func Publish(options NewRepoOptions) error {
 	if !success {
 		actors.LogCLI("failed to publish event", 2)
 	}
+	actors.LogCLI("Publishing repo anchor event", 4)
 	event, err := repo.Anchor.Event()
 	if err != nil {
 		return err
