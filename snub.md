@@ -30,6 +30,45 @@ I want my git repositories to be:
 * Fully compatible with existing git tooling
 * lightning as a first class citizen
 
+
+## Current Status
+You can publish a git repository as events. I've spent about a week on getting this part working. Next up I will implement clone. I'm actively working on this whenever I've got a spare minute.
+
+## Get Started
+Install Golang, and make sure your `go/bin` directory is in your PATH. Basically just follow the usual golang install instructions. Then:
+
+```
+git clone https://github.com/nostrocket/engine.git
+cd engine
+make installsnub
+```
+
+Then, from within any existing git repository:
+``` 
+snub init
+vim ./snub/config.yaml //set your relay
+snub publish
+```
+
+After that, to view some example events that you just published:
+
+```
+snub example -a "31228:<your pubkey>:dTag //this information will be printed after publishing
+```
+
+For configuration options, look in `~/nostrocket/config.yaml` and `<repo>/.snub/config.yaml`
+
+To use a different pubkey other than the one that was automatically generated, modify the pubkey and private key in `~/nostrocket/wallet.dat`
+
+### Using a local relay
+This is highly recommended for the moment, don't really want to spam everyone's relays.
+```
+git clone https://github.com/nostrocket/flamebucket.git
+cd flamebucket
+./install.sh
+./start_local_relay.sh
+```
+
 ## Architecture
 ### Repo Anchor - Kind 31228
 This is a replaceable event that MUST contain the repository name and D tag.
@@ -72,45 +111,15 @@ This is a non-replaceable event containing a git blob object.
 #### MAY contain:
 * a nonce in the `nonce` tag to mine an event ID which starts with the same characters as the SHA1 git identifier for this commit
 
-## Current Status
-You can publish a git repository as events. I've spent about a week on getting this part working. Next up I will implement clone. I'm actively working on this whenever I've got a spare minute.
+### Merges and Pull Requests
+A Fast Forward merge is straightforward: you publish a new HEAD on the `master` branch to include the latest commit.
+Any other kind of merge requires a new commit to combine multiple commits and possibly resolve conflicts, this is simply a commit object which may or may not update blobs and trees.
 
-## Get Started
-Install Golang, and make sure your `go/bin` directory is in your PATH. Basically just follow the usual golang install instructions. Then:
+A commit that tags a branch `d` tag is a pull request.
 
-```
-git clone https://github.com/nostrocket/engine.git
-cd engine
-make installsnub
-```
+Clients SHOULD follow the list of maintainers to find the latest `master` branch. Maintainers SHOULD update their branches whenever another maintainer merges a commit. In any case, the latest HEAD of a branch can be found by subscribing to kind `31227` events from all maintainers and selecting the most recent (the "longest chain").
 
-Then, from within any existing git repository:
-``` 
-snub init
-vim ./snub/config.yaml //set your relay
-snub publish
-```
-
-After that, to view some example events that you just published:
-
-```
-snub example -a "31228:<your pubkey>:dTag //this information will be printed after publishing
-```
-
-For configuration options, look in `~/nostrocket/config.yaml` and `<repo>/.snub/config.yaml`
-
-To use a different pubkey other than the one that was automatically generated, modify the pubkey and private key in `~/nostrocket/wallet.dat`
-
-### Using a local relay
-This is highly recommended for the moment, don't really want to spam everyone's relays.
-```
-git clone https://github.com/nostrocket/flamebucket.git
-cd flamebucket
-./install.sh
-./start_local_relay.sh
-```
-
-## Events
+## Event Examples
 ``` 
 -----THIS IS A REPOSITORY ANCHOR EVENT-----
 nostr.Event{ID:"a45e2ecbe3c543421f871cb39ea072defc1ab2274fa3c77bdaed34d6e7621b8e", PubKey:"546b4d7f86fe2c1fcc7eb10bf96c2eaef1daa26c67dad348ff0e9c853ffe8882", CreatedAt:1693915528, Kind:31228, Tags:nostr.Tags{nostr.Tag{"rocket", ""}, nostr.Tag{"name", "engine"}, nostr.Tag{"d", "f770853bd251c4a9c8ffcc34fa19fea11d882b70c5f0e502182e6bbc01233db6"}, nostr.Tag{"a", ""}, nostr.Tag{"forknode", ""}, nostr.Tag{"maintainers", "546b4d7f86fe2c1fcc7eb10bf96c2eaef1daa26c67dad348ff0e9c853ffe8882"}}, Content:"", Sig:"af7762f523855ae853a593f776611ee6da5164e2d1e228e10072fbfd79ea26a1cb56f6b51b4fb2c051b1a955aaf2746dcb1548fff40a9d83b3c9d670730fb36f"}
