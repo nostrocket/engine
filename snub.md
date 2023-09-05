@@ -2,6 +2,8 @@
 ### I didn't choose the snub life; the snub life chose me.
 Github did something to me recently which really annoyed me, and its become obvious that storing canonical git repositories on centralised infrastructure is no longer a viable approach for open source projects, especially if you're working on freedom tech. In any case, it's not going to work for Nostrocket, so I have to build something that will solve the problem.
 
+![](https://image.nostr.build/859ba33dc2c8bb938dc0b4268b2a45dfe844bed663dd1a95b5a80bc7a0462b4c.png)
+
 The git **over** nostr approach that I keep seeing people take just sends patches around. We can already do that with email, and there's a reason we don't. This is not a feasible approach to building git **on** nostr.
 
 Having to iterate over 38,000 individual patches every time you want to rebuild a git repo locally is not fun. This is why git doesn't work that way internally, and this is why sending patches over nostr doesn't really help anything.
