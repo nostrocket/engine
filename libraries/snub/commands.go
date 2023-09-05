@@ -2,8 +2,11 @@ package snub
 
 import (
 	"fmt"
+	"strings"
 
+	"github.com/nbd-wtf/go-nostr"
 	"github.com/spf13/cobra"
+	"nostrocket/messaging/relays"
 )
 
 func RootCommand() *cobra.Command {
@@ -72,6 +75,18 @@ func RootCommand() *cobra.Command {
 	}
 	rootCmd.AddCommand(push)
 
+	init := &cobra.Command{
+		Use:   "init",
+		Short: "add a snub config file to the repository",
+		Run: func(cmd *cobra.Command, args []string) {
+			LoadRocketConfig()
+			BuildFromExistingRepo(NewRepoOptions{
+				Path: GetCurrentDirectory(),
+			})
+		},
+	}
+	rootCmd.AddCommand(init)
+
 	remote := &cobra.Command{
 		Use:   "addremote",
 		Short: "add a remote to this repository, must be a valid nostr event of kind 31228",
@@ -83,5 +98,46 @@ func RootCommand() *cobra.Command {
 	}
 	rootCmd.AddCommand(remote)
 
+	example := &cobra.Command{
+		Use:   "example",
+		Short: "pass in an a tag to print some example events",
+		Run: func(cmd *cobra.Command, args []string) {
+			sampleEvents(flagValue)
+		},
+	}
+	example.Flags().StringVarP(&flagValue, "atag", "a", "", "an a tag in the format 31228:<pubkey>:<d tag>")
+	rootCmd.AddCommand(example)
+
 	return rootCmd
+}
+
+func sampleEvents(atag string) {
+	//31228:546b4d7f86fe2c1fcc7eb10bf96c2eaef1daa26c67dad348ff0e9c853ffe8882:1d16e64ebcf5cf13640c53c6e1a341b5ee3b868efea110ecef581c98d4dfe023]
+	events := make(map[int64]nostr.Event)
+	tm := make(nostr.TagMap)
+	tm["a"] = []string{atag}
+	tm2 := make(nostr.TagMap)
+	d := strings.Split(atag, ":")
+	tm2["d"] = []string{d[2]}
+	n := relays.FetchEvents([]string{"ws://127.0.0.1:8080"}, nostr.Filters{
+		nostr.Filter{Tags: tm},
+		nostr.Filter{Tags: tm2},
+	})
+	for _, event := range n {
+		events[int64(event.Kind)] = event
+	}
+	for _, event := range events {
+		switch event.Kind {
+		case 3121:
+			fmt.Printf("\n-----THIS IS A COMMIT EVENT-----\n%#v\n\n", event)
+		case 3123:
+			fmt.Printf("\n-----THIS IS A BLOB EVENT-----\nBinary blobs are compressed and hex encoded to make events smaller, you can see this data in the data tag.\n%#v\n\n", event)
+		case 3122:
+			fmt.Printf("\n-----THIS IS A TREE EVENT-----\n%#v\n\n", event)
+		case 31227:
+			fmt.Printf("\n-----THIS IS A BRANCH EVENT-----\nReplaeable event so that the HEAD can be udpated. The list of commits is not strictly neccessary and will probably be removed\n%#v\n\n", event)
+		case 31228:
+			fmt.Printf("\n-----THIS IS A REPOSITORY ANCHOR EVENT-----\nThis is a replaceable event so that maintainers etc can be updated\n%#v\n\n", event)
+		}
+	}
 }

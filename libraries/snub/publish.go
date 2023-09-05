@@ -152,7 +152,14 @@ func Publish(options NewRepoOptions) error {
 	if !success {
 		actors.LogCLI("failed to publish event", 2)
 	}
-	actors.LogCLI(fmt.Sprintf("Published repository, subscribe to tag %s to view events", repo.Anchor.childATag()), 4)
+	event, err := repo.Anchor.Event()
+	if err != nil {
+		return err
+	}
+	repo.Sender <- event
+	time.Sleep(time.Second * 2)
+	//todo validate all events are on the relay and resend anything that is missing
+	actors.LogCLI(fmt.Sprintf("Published repository, subscribe to tag %s to view all events, or to view an example of each event kind, execute the command snub example -a \"%s\"", repo.Anchor.childATag(), repo.Anchor.childATag()[1:]), 4)
 	return nil
 }
 

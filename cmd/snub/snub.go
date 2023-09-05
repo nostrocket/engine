@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"nostrocket/subrocketLibraries/snub"
+	"nostrocket/libraries/snub"
 )
 
 func main() {
