@@ -4,49 +4,44 @@ Github did something to me recently which really annoyed me, and its become obvi
 
 This is especially if you're working on freedom tech. In any case, it's not going to work for Nostrocket, so I have to build something that will solve the problem.
 
-![](https://image.nostr.build/859ba33dc2c8bb938dc0b4268b2a45dfe844bed663dd1a95b5a80bc7a0462b4c.png)
+![](https://image.nostr.build/b87d253e485246c32a4e062d21db046994daba3617d8a4c9bf60ceb3de05adc5.jpg)
 
-## The problem with current approaches to git + nostr
+## Git *over* nostr is not the solution
 The git **over** nostr approach that I keep seeing people take just sends patches around. We can already do that with email, and there's a reason we don't. This is not a feasible approach to building git **on** nostr.
 
-Having to iterate over 38,000 individual patches every time you want to rebuild a git repo locally is not fun. This is why git doesn't work that way internally, and this is why sending patches over nostr doesn't really help anything.
+Having to iterate over 38,000 individual patches every time you want to rebuild a git repo locally is not fun. This is why git doesn't work that way internally, and this is one of many reasons why sending patches over nostr doesn't really accomplish anything.
 
-We need to put git internals directly onto nostr, rather than take shortcuts by relying on your local computer or a git server to rebuild git internal objects from some combination of patches that exist as events.
+We need to put git internals **directly** onto nostr, rather than take shortcuts by relying on your local computer or a git server to rebuild git internal objects from some combination of patches that exist as events.
 
 The "patches over nostr" approach is also going to be basically useless in terms of allowing people to build github type clients to interact with "git" repositories that don't exist as native git objects. 
 
-People are confused because commits are **represented** on github etc like a patch, but git commits do **not** contain patches, and there's a very good reason for that, which becomes even *more* important when we are talking about repositories existing as events.
+People are sometimes confused because commits are **represented** on github etc like a patch, but git commits do **not** contain patches, and there's a very good reason for that, which becomes even *more* important when we are talking about repositories existing as events.
 
 ## The End Goal for Snub
 Censorship resistant canonical git repositories that can be directly consumed by nostr clients.
 I want my git repositories to be:
 * as censorship resistant and as trivially redundant as my nostr notes
-* interaction using public/private keypairs ONLY; NO USERNAMES AND PASSWORDS!
-* Web clients can read git objects (blobs, trees, refs, etc) directly from events, they don't need to rebuild the entire repo from patches to know what the current state is
+* interaction using public/private keypairs ONLY
+* Web clients can read git objects (blobs, trees, refs, etc) directly from events, they don't need to rebuild the entire repo from patches to know what the current state is,
 * totally open and permissionless, anyone can easily build microapps that interact directly with git internals from events to create whatever frontend features they want
 * NO F*CKING SERVERS!
 * NO F*CKING DOMAIN NAMES
 * NO F*CKING usernames and passwords, personal access tokens, ssh certificates, etc etc
-* Fully compatible with existing git tooling
 * lightning as a first class citizen
+* Fully compatible with existing git tooling
 
 
 ## Current Status
 You can publish a git repository as events. I've spent about a week on getting this part working. Next up I will implement clone. I'm actively working on this whenever I've got a spare minute.
 
 ## Get Started
-Install Golang, and make sure your `go/bin` directory is in your PATH. Basically just follow the usual golang install instructions. Then:
+Install the latest version of Golang, and make sure your `go/bin` directory is in your PATH. Basically just follow the usual golang install instructions. Then:
 
 ```
 git clone https://github.com/nostrocket/engine.git
 cd engine
 make installsnub
-```
-
-Then, from within any existing git repository:
-``` 
-snub init
-vim ./snub/config.yaml //set your relay
+snub init //optional
 snub publish
 ```
 
