@@ -2,8 +2,6 @@ module nostrocket
 
 go 1.21
 
-toolchain go1.21.0
-
 require (
 	github.com/btcsuite/btcd/btcec/v2 v2.2.0
 	github.com/davecgh/go-spew v1.1.1
