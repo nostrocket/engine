@@ -125,6 +125,11 @@ func Publish(options NewRepoOptions) error {
 		return err
 	}
 
+	err = repo.makeBlobEventsAndPublishToRelays(blobs)
+	if err != nil {
+		return err
+	}
+
 	//PUBLISH BRANCH
 	branch = repo.Branches[branchName]
 	branchEvent, err := branch.Event(&repo.Anchor)
@@ -148,6 +153,37 @@ func Publish(options NewRepoOptions) error {
 		actors.LogCLI("failed to publish event", 2)
 	}
 	actors.LogCLI(fmt.Sprintf("Published repository, subscribe to tag %s to view events", repo.Anchor.childATag()), 4)
+	return nil
+}
+
+func (r *Repo) makeBlobEventsAndPublishToRelays(blobs []library.Sha1) error {
+	for _, sha1 := range blobs {
+		blobBytes, err := r.getBinaryBlob(sha1)
+		if err != nil {
+			return err
+		}
+		object, err := getGitHashForObject(fmt.Sprintf("%s", blobBytes), "blob")
+		if err != nil {
+			return err
+		}
+		if sha1 != object {
+			return fmt.Errorf("hash mismatch")
+		}
+		blob := Blob{
+			GID:      sha1,
+			BlobData: blobBytes,
+		}
+		event, err := blob.Event(r)
+		if err != nil {
+			return err
+		}
+		r.Sender <- event
+		blob.EventID = event.ID
+		if len(r.Blobs) == 0 {
+			r.Blobs = make(map[library.Sha1]Blob)
+		}
+		r.Blobs[sha1] = blob
+	}
 	return nil
 }
 
@@ -189,7 +225,6 @@ func (r *Repo) makeTreeEventsAndPublishToRelays(trees []library.Sha1, blobs []li
 		if err != nil {
 			return err
 		}
-		fmt.Printf("\n%#v\n\n%#v\n", event, event.Tags)
 		r.Sender <- event
 		sent++
 		tree.EventID = event.ID

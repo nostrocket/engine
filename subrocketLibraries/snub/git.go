@@ -132,8 +132,8 @@ func getBlobIdentifiers(repoPath, treeIdentifier library.Sha1) (blobIdentifiers 
 	return
 }
 
-func GetBinaryBlob(repoPath string, blobID string) ([]byte, error) {
-	cmd := exec.Command("git", "-C", repoPath, "cat-file", "-p", blobID)
+func (r *Repo) getBinaryBlob(blobID string) ([]byte, error) {
+	cmd := exec.Command("git", "-C", r.Anchor.LocalDir, "cat-file", "-p", blobID)
 	output, err := cmd.Output()
 	if err != nil {
 		return nil, err
@@ -142,20 +142,20 @@ func GetBinaryBlob(repoPath string, blobID string) ([]byte, error) {
 	return output, nil
 }
 
-func CreateBlobMap(repoPath string) (map[string][]byte, error) {
-	treeID, err := getFirstTreeSHA(repoPath)
-	if err != nil {
-		return nil, err
-	}
-
-	blobMap := make(map[string][]byte)
-	err = iterateTree(repoPath, treeID, blobMap)
-	if err != nil {
-		return nil, err
-	}
-
-	return blobMap, nil
-}
+//func CreateBlobMap(repoPath string) (map[string][]byte, error) {
+//	treeID, err := getFirstTreeSHA(repoPath)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	blobMap := make(map[string][]byte)
+//	err = iterateTree(repoPath, treeID, blobMap)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	return blobMap, nil
+//}
 
 func (r *Repo) getObjectsForBranch(name string) (bm BlobMap, err error) {
 	_, ok := r.Branches[name]
@@ -201,44 +201,44 @@ func (r *Repo) iterateTree(tree library.Sha1, objects map[library.Sha1]string) e
 	return nil
 }
 
-func iterateTree(repoPath string, treeID string, blobMap map[string][]byte) error {
-	blobIDs, _, err := getBlobIdentifiers(repoPath, treeID)
-	if err != nil {
-		return err
-	}
-
-	for _, blobID := range blobIDs {
-		blob, err := GetBinaryBlob(repoPath, blobID)
-		if err != nil {
-			return err
-		}
-
-		blobMap[blobID] = blob
-	}
-
-	cmd := exec.Command("git", "-C", repoPath, "cat-file", "-p", treeID)
-	output, err := cmd.Output()
-	if err != nil {
-		return err
-	}
-
-	lines := strings.Split(string(output), "\n")
-	for _, line := range lines {
-		fmt.Println(107)
-		fmt.Println(line)
-		if strings.Contains(line, "tree") {
-			fields := strings.Fields(line)
-			if len(fields[2]) == 40 && fields[1] == "tree" {
-				err := iterateTree(repoPath, fields[2], blobMap)
-				if err != nil {
-					return err
-				}
-			}
-		}
-	}
-
-	return nil
-}
+//func iterateTree(repoPath string, treeID string, blobMap map[string][]byte) error {
+//	blobIDs, _, err := getBlobIdentifiers(repoPath, treeID)
+//	if err != nil {
+//		return err
+//	}
+//
+//	for _, blobID := range blobIDs {
+//		blob, err := getBinaryBlob(repoPath, blobID)
+//		if err != nil {
+//			return err
+//		}
+//
+//		blobMap[blobID] = blob
+//	}
+//
+//	cmd := exec.Command("git", "-C", repoPath, "cat-file", "-p", treeID)
+//	output, err := cmd.Output()
+//	if err != nil {
+//		return err
+//	}
+//
+//	lines := strings.Split(string(output), "\n")
+//	for _, line := range lines {
+//		fmt.Println(107)
+//		fmt.Println(line)
+//		if strings.Contains(line, "tree") {
+//			fields := strings.Fields(line)
+//			if len(fields[2]) == 40 && fields[1] == "tree" {
+//				err := iterateTree(repoPath, fields[2], blobMap)
+//				if err != nil {
+//					return err
+//				}
+//			}
+//		}
+//	}
+//
+//	return nil
+//}
 
 func GetCurrentHeadCommitID(repoPath string) (string, error) {
 	cmd := exec.Command("git", "-C", repoPath, "rev-parse", "HEAD")

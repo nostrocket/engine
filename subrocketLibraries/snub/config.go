@@ -28,7 +28,7 @@ func (r *Repo) initConfig() error {
 	r.Config.SetDefault("firstRun", true)
 	r.Config.SetDefault("dTag", r.Anchor.DTag)
 	r.Config.SetDefault("relays", []string{"ws://127.0.0.1:8080"})
-	r.Config.SetDefault("PoW", 0)
+	r.Config.SetDefault("PoW", 4)
 	err = library.Touch(r.Config.GetString("snubPath") + "config.yaml")
 	if err != nil {
 		return err

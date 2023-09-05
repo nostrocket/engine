@@ -158,12 +158,6 @@ type RepoAnchor struct {
 	LocalDir     string            //the location on the local filesystem if this exists locally
 }
 
-type BlobInTree struct {
-	Blob     Blob
-	Name     string
-	Filemode int64
-}
-
 type Blob struct {
 	GID      library.Sha1
 	BlobData []byte

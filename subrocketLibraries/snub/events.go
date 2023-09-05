@@ -12,26 +12,26 @@ import (
 
 func (r *RepoAnchor) GetFullRepoFromEvents() {}
 
-func (r *RepoAnchor) GetAllBlobs(b *Branch) (bm BlobMap, err error) {
-	id, err := GetCurrentHeadCommitID(r.LocalDir)
-	if err != nil {
-		return bm, err
-	}
-	b.Head = id
-	blobMap, err := CreateBlobMap(r.LocalDir)
-	if err != nil {
-		return nil, err
-	}
-	for s, bytes := range blobMap {
-		fmt.Printf("\n--------------------\n%s\n%s\n\n", s, bytes)
-	}
-
-	//get all objects from nostr events (or none if this is new)
-	//get all git objects from the local repo
-	//create nostr events for all objects that don't exist as events already
-
-	return
-}
+//func (r *RepoAnchor) GetAllBlobs(b *Branch) (bm BlobMap, err error) {
+//	id, err := GetCurrentHeadCommitID(r.LocalDir)
+//	if err != nil {
+//		return bm, err
+//	}
+//	b.Head = id
+//	blobMap, err := CreateBlobMap(r.LocalDir)
+//	if err != nil {
+//		return nil, err
+//	}
+//	for s, bytes := range blobMap {
+//		fmt.Printf("\n--------------------\n%s\n%s\n\n", s, bytes)
+//	}
+//
+//	//get all objects from nostr events (or none if this is new)
+//	//get all git objects from the local repo
+//	//create nostr events for all objects that don't exist as events already
+//
+//	return
+//}
 
 func (r *RepoAnchor) Event() (nostr.Event, error) {
 	//todo validate name doesn't have illegal characters (space etc)
@@ -171,6 +171,30 @@ func (t *Tree) Event(r *Repo) (n nostr.Event, err error) {
 	n.Tags = append(n.Tags, treeTag)
 
 	makeNonce(&n, t.GID, r.Config.GetInt64("PoW"))
+	err = n.Sign(actors.MyWallet().PrivateKey)
+	if err != nil {
+		return nostr.Event{}, err
+	}
+	return
+}
+
+func (b *Blob) Event(r *Repo) (n nostr.Event, err error) {
+	compressed, err := compressBytes(b.BlobData)
+	if err != nil {
+		return n, err
+	}
+	n = nostr.Event{
+		PubKey:    actors.MyWallet().Account,
+		CreatedAt: nostr.Timestamp(time.Now().Unix()),
+		Kind:      3123,
+		Tags: nostr.Tags{
+			nostr.Tag{"gid", b.GID},
+			nostr.Tag{"data", fmt.Sprintf("%x", compressed)},
+			r.Anchor.childATag(),
+		},
+		Content: "snub blob object",
+	}
+	makeNonce(&n, b.GID, r.Config.GetInt64("PoW"))
 	err = n.Sign(actors.MyWallet().PrivateKey)
 	if err != nil {
 		return nostr.Event{}, err
