@@ -1,9 +1,12 @@
 # Snub
 ### I didn't choose the snub life; the snub life chose me.
-Github did something to me recently which really annoyed me, and its become obvious that storing canonical git repositories on centralised infrastructure is no longer a viable approach for open source projects, especially if you're working on freedom tech. In any case, it's not going to work for Nostrocket, so I have to build something that will solve the problem.
+Github did something to me recently which really annoyed me, and its become obvious that storing canonical git repositories on centralised infrastructure is no longer a viable approach for open source projects.
+
+This is especially if you're working on freedom tech. In any case, it's not going to work for Nostrocket, so I have to build something that will solve the problem.
 
 ![](https://image.nostr.build/859ba33dc2c8bb938dc0b4268b2a45dfe844bed663dd1a95b5a80bc7a0462b4c.png)
 
+## The problem with current approaches to git + nostr
 The git **over** nostr approach that I keep seeing people take just sends patches around. We can already do that with email, and there's a reason we don't. This is not a feasible approach to building git **on** nostr.
 
 Having to iterate over 38,000 individual patches every time you want to rebuild a git repo locally is not fun. This is why git doesn't work that way internally, and this is why sending patches over nostr doesn't really help anything.
@@ -14,7 +17,7 @@ The "patches over nostr" approach is also going to be basically useless in terms
 
 People are confused because commits are **represented** on github etc like a patch, but git commits do **not** contain patches, and there's a very good reason for that, which becomes even *more* important when we are talking about repositories existing as events.
 
-### The End Goal
+## The End Goal for Snub
 Censorship resistant canonical git repositories that can be directly consumed by nostr clients.
 I want my git repositories to be:
 * as censorship resistant and as trivially redundant as my nostr notes
@@ -27,52 +30,52 @@ I want my git repositories to be:
 * Fully compatible with existing git tooling
 * lightning as a first class citizen
 
-### Architecture
-#### Repo Anchor - Kind 31228
+## Architecture
+### Repo Anchor - Kind 31228
 This is a replaceable event that MUST contain the repository name and D tag.
 It MUST contain either a list of maintainer pubkeys OR a Rocket ID to take maintainers from a Nostrocket organization.
 It MAY contain an `a` tag identifying an upstream repository if this is a fork.
 It MAY contain a `forknode` tag identifying the latest commit which is at parity with the upstream repository.
 
-#### Branch - Kind 31227
+### Branch - Kind 31227
 This is a replaceable event that MUST contain a branch name, HEAD ref, `d` tag, and `a` tag identifying the kind 31228 Repo Anchor.
 
-#### Commit - Kind 3121
+### Commit - Kind 3121
 This is a non-replableable event containign a git Commit object. 
-##### MUST contain:
+#### MUST contain:
 * a SHA1 git identifier in the `gid` tag,
 * a SHA1 git identifier in the `tree` tag,
 * the `d` tag of a Repo Anchor event in the `a` tag
-##### MAY contain:
+#### MAY contain:
 * a list of SHA1 git identifiers of parent commits in the `parents` tag,
 * an author name, email, unix timestamp, and UTC offset value in the `author` tag (author and committer not necessary except for maintaining the same hashes used by legacy platforms)
 * a committer name, email, unix timestamp, and UTC offset value in the `committer` tag
 * a commit message in the event Content
 * a nonce in the `nonce` tag to mine an event ID which starts with the same characters as the SHA1 git identifier for this commit
 
-#### Tree - Kind 3122
+### Tree - Kind 3122
 This is a non-replaceable event containing a git tree object.
-##### MUST contain:
+#### MUST contain:
 * a SHA1 git identifier in the `gid` tag,
 * the `d` tag of a Repo Anchor event in the `a` tag
-##### MAY contain:
+#### MAY contain:
 * a list of git blob identifiers in the `blob` tag, of the format <SHA1>:<FileName>:<FileMode>
 * a list of git tree identifiers in the `tree` tag, of the format <SHA1>:<DirectoryName>:<FileMode>
 * a nonce in the `nonce` tag to mine an event ID which starts with the same characters as the SHA1 git identifier for this commit
 
-#### Blob - Kind 3123
+### Blob - Kind 3123
 This is a non-replaceable event containing a git blob object.
-##### MUST contain:
+#### MUST contain:
 * a SHA1 git identifier in the `gid` tag,
 * the `d` tag of a Repo Anchor event in the `a` tag
 * the blob data in the `data` tag. This is currently the binary blob compressed with gzip (for browser speed) and encoded to hex.
-##### MAY contain:
+#### MAY contain:
 * a nonce in the `nonce` tag to mine an event ID which starts with the same characters as the SHA1 git identifier for this commit
 
-### Current Status
+## Current Status
 You can publish a git repository as events. I've spent about a week on getting this part working. Next up I will implement clone. I'm actively working on this whenever I've got a spare minute.
 
-#### Get Started
+## Get Started
 Install Golang, and make sure your `go/bin` directory is in your PATH. Basically just follow the usual golang install instructions. Then:
 
 ```
@@ -107,7 +110,7 @@ cd flamebucket
 ./start_local_relay.sh
 ```
 
-### Events
+## Events
 ``` 
 -----THIS IS A REPOSITORY ANCHOR EVENT-----
 nostr.Event{ID:"a45e2ecbe3c543421f871cb39ea072defc1ab2274fa3c77bdaed34d6e7621b8e", PubKey:"546b4d7f86fe2c1fcc7eb10bf96c2eaef1daa26c67dad348ff0e9c853ffe8882", CreatedAt:1693915528, Kind:31228, Tags:nostr.Tags{nostr.Tag{"rocket", ""}, nostr.Tag{"name", "engine"}, nostr.Tag{"d", "f770853bd251c4a9c8ffcc34fa19fea11d882b70c5f0e502182e6bbc01233db6"}, nostr.Tag{"a", ""}, nostr.Tag{"forknode", ""}, nostr.Tag{"maintainers", "546b4d7f86fe2c1fcc7eb10bf96c2eaef1daa26c67dad348ff0e9c853ffe8882"}}, Content:"", Sig:"af7762f523855ae853a593f776611ee6da5164e2d1e228e10072fbfd79ea26a1cb56f6b51b4fb2c051b1a955aaf2746dcb1548fff40a9d83b3c9d670730fb36f"}
