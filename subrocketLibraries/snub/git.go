@@ -16,8 +16,70 @@ import (
 	"nostrocket/engine/library"
 )
 
-func GetFirstTreeSHA(repoPath string) (string, error) {
-	return getFirstTreeSHA(repoPath)
+func (r *Repo) getTreeFromCommit(commit string) (string, error) {
+	cmd := exec.Command("git", "cat-file", "-p", commit)
+	cmd.Dir = r.Anchor.LocalDir
+
+	output, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("failed to execute git cat-file command: %v", err)
+	}
+
+	lines := strings.Split(string(output), "\n")
+	for _, line := range lines {
+		if strings.HasPrefix(line, "tree") {
+			fields := strings.Fields(line)
+			if len(fields) >= 2 {
+				return fields[1], nil
+			}
+		}
+	}
+	return "", fmt.Errorf("failed to find tree identifier in git cat-file output")
+}
+
+func mktree(items []string) (library.Sha1, error) {
+	cmd := exec.Command("git", "mktree")
+	cmd.Stderr = os.Stderr
+
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		fmt.Println(349)
+		return "", err
+	}
+	defer stdin.Close()
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		fmt.Println(56)
+		return "", err
+	}
+
+	if err := cmd.Start(); err != nil {
+		fmt.Println(61)
+		return "", err
+	}
+	var input string
+	for i, item := range items {
+		input += item
+		if i < len(items) {
+			input += "\n"
+		}
+	}
+	if _, err := stdin.Write([]byte(input)); err != nil {
+		return "", err
+	}
+
+	output, err := ioutil.ReadAll(stdout)
+	if err != nil {
+		return "", err
+	}
+
+	if err := cmd.Wait(); err != nil {
+		fmt.Println(cmd.String())
+		return "", err
+	}
+
+	return string(output[:len(output)-1]), nil
 }
 
 func getFirstTreeSHA(repoPath string) (string, error) {
@@ -41,24 +103,26 @@ func getFirstTreeSHA(repoPath string) (string, error) {
 	return "", fmt.Errorf("failed to find tree identifier in git cat-file output")
 }
 
-func GetBlobIdentifiers(repoPath, treeIdentifier string) (blobIdentifiers []string, err error) {
-	return getBlobIdentifiers(repoPath, treeIdentifier)
-}
-
-// getBlobIdentifiers returns a list of blob identifiers present in the given tree
-func getBlobIdentifiers(repoPath, treeIdentifier string) (blobIdentifiers []string, err error) {
+// getBlobIdentifiers returns a list of blob and tree identifiers present in the given tree
+func getBlobIdentifiers(repoPath, treeIdentifier library.Sha1) (blobIdentifiers []library.Sha1, treeIdentifiers []library.Sha1, err error) {
 	cmd := exec.Command("git", "-C", repoPath, "cat-file", "-p", treeIdentifier)
 	output, err := cmd.Output()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-
+	treeIdentifiers = append(treeIdentifiers, treeIdentifier)
 	lines := strings.Split(string(output), "\n")
 	for _, line := range lines {
 		if strings.Contains(line, "blob") {
 			fields := strings.Fields(line)
 			if len(fields[2]) == 40 && fields[1] == "blob" {
 				blobIdentifiers = append(blobIdentifiers, fields[2])
+			}
+		}
+		if strings.Contains(line, "tree") {
+			fields := strings.Fields(line)
+			if len(fields[2]) == 40 && fields[1] == "tree" {
+				treeIdentifiers = append(treeIdentifiers, fields[2])
 			}
 		}
 	}
@@ -91,8 +155,51 @@ func CreateBlobMap(repoPath string) (map[string][]byte, error) {
 	return blobMap, nil
 }
 
+func (r *Repo) getObjectsForBranch(name string) (bm BlobMap, err error) {
+	_, ok := r.Branches[name]
+	if !ok {
+		return nil, fmt.Errorf("branch does not exist")
+	}
+	//objects, err := r.Git.BlobObjects()
+	//if err != nil {
+	//	return nil, err
+	//}
+	//err = objects.ForEach(func(blob *object.Blob) error {
+	//	fmt.Printf("\nblob type: %s blob hash: %s\n", blob.Type(), blob.ID().String())
+	//	return nil
+	//})
+	//if err != nil {
+	//	return nil, err
+	//}
+	//
+	//treeObjects, err := r.Git.TreeObjects()
+	//if err != nil {
+	//	return nil, err
+	//}
+	//treeObjects.ForEach(func(tree *object.Tree) error {
+	//	for i, entry := range tree.Entries {
+	//		entry
+	//	}
+	//})
+
+	return BlobMap{}, nil
+}
+
+func (r *Repo) iterateTree(tree library.Sha1, objects map[library.Sha1]string) error {
+	o, err := r.Git.TreeObject(plumbing.NewHash(tree))
+	if err != nil {
+		return err
+	}
+	objects[o.Hash.String()] = "tree"
+	for _, entry := range o.Entries {
+		objects[entry.Hash.String()] = "blob"
+		r.iterateTree(entry.Hash.String(), objects)
+	}
+	return nil
+}
+
 func iterateTree(repoPath string, treeID string, blobMap map[string][]byte) error {
-	blobIDs, err := getBlobIdentifiers(repoPath, treeID)
+	blobIDs, _, err := getBlobIdentifiers(repoPath, treeID)
 	if err != nil {
 		return err
 	}
@@ -352,7 +459,6 @@ func openRepository(path string) (*git.Repository, error) {
 
 func getGitHashForObject(input string, t string) (string, error) {
 	cmd := exec.Command("git", "hash-object", "-t"+t, "--stdin")
-	//cmd.Stdin = ioutil.NopCloser(os.Stdin)
 	cmd.Stderr = os.Stderr
 
 	stdin, err := cmd.StdinPipe()
@@ -378,7 +484,6 @@ func getGitHashForObject(input string, t string) (string, error) {
 		return "", err
 	}
 	stdin.Close()
-
 	output, err := ioutil.ReadAll(stdout)
 	if err != nil {
 		fmt.Println(73)

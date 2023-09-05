@@ -45,14 +45,12 @@ func BuildFromExistingRepo(options NewRepoOptions) (r Repo, err error) {
 		DTag: library.Random(),
 	}
 	r.Branches = make(map[string]Branch)
-	r.Branches[branch.Name] = branch
 	//get commits
 	commitIDs, err := getAllCommitIDs(&r.Git, branch.Head)
 	if err != nil {
 		return Repo{}, err
 	}
 	r.Commits = make(map[library.Sha1]Commit)
-
 	for _, d := range commitIDs {
 		data, err := getCommitData2(d, &r.Git)
 		if err != nil {
@@ -89,7 +87,7 @@ func BuildFromExistingRepo(options NewRepoOptions) (r Repo, err error) {
 			//ioutil.WriteFile("theirStrings/"+data.GID, cbytes, 0644)
 		}
 		//if plumbing.ComputeHash(1, []byte(data.String())).String() != data.GID {
-		//	fmt.Println(len(r.Commits))
+		//	fmt.Println(len(r.CommitEventIDs))
 		//	fmt.Printf("\nGID: %s CALULATED: %s\n", data.GID, plumbing.ComputeHash(1, []byte(data.String())).String())
 		//	fmt.Println("---STRING---")
 		//	fmt.Println(data.String())
@@ -98,11 +96,18 @@ func BuildFromExistingRepo(options NewRepoOptions) (r Repo, err error) {
 		//	return Repo{}, fmt.Errorf("failed to calculate the correct hash")
 		//}
 		r.Commits[data.GID] = *data
+		if len(branch.CommitEventIDs) == 0 {
+			branch.CommitEventIDs = make(map[library.Sha256]library.Sha1)
+		}
+		if len(branch.CommitGitIDs) == 0 {
+			branch.CommitGitIDs = make(map[library.Sha1]library.Sha256)
+		}
+		branch.CommitGitIDs[data.GID] = ""
 	}
+	r.Branches[branch.Name] = branch
 	//get full data for each commit
 
 	//get blobs
-
 	return
 }
 

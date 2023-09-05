@@ -63,8 +63,8 @@ func GetBranchFromEvent(event nostr.Event) (r Branch, err error) {
 		r.Head = head
 	}
 	commits := library.GetTagSlice(event, "commits")
-	if len(commits) > 0 {
-		r.Commits = commits
+	for _, commit := range commits {
+		r.CommitEventIDs[commit] = ""
 	}
 	length, ok := library.GetFirstTag(event, "len")
 	if ok {
@@ -73,7 +73,7 @@ func GetBranchFromEvent(event nostr.Event) (r Branch, err error) {
 			r.Length = parseInt
 		}
 		if err != nil {
-			r.Length = int64(len(r.Commits))
+			r.Length = int64(len(r.CommitEventIDs))
 		}
 	}
 	return

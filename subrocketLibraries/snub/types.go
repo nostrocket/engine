@@ -2,10 +2,12 @@ package snub
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/spf13/viper"
+	"nostrocket/engine/actors"
 	"nostrocket/engine/library"
 )
 
@@ -28,6 +30,7 @@ func (r *Repo) loadFromDisk() error {
 	return nil
 }
 
+// Init creates a configuration and loads the repository from disk into r.Git
 func (r *Repo) Init() error {
 	err := r.loadFromDisk()
 	if err != nil {
@@ -88,9 +91,65 @@ func (l *LegacyIdentification) tag() (t nostr.Tag) {
 
 type Tree struct {
 	//use mktree instead of hash-object
-	Items   []treeObject //the items in the tree
+	Blobs   map[library.Sha1]BlobInTree
+	Trees   map[library.Sha1]TreeInTree
 	GID     library.Sha1
 	EventID library.Sha256
+}
+
+type TreeInTree struct {
+	Filemode int64
+	Name     string
+	Tree     Tree
+}
+
+func (t *Tree) Event() (n nostr.Event, err error) {
+	n = nostr.Event{
+		PubKey:    actors.MyWallet().Account,
+		CreatedAt: nostr.Timestamp(time.Now().Unix()),
+		Kind:      3122,
+		Tags: nostr.Tags{
+			nostr.Tag{"gid", t.GID},
+		},
+		Content: "snub tree object",
+	}
+	blobTag := nostr.Tag{"blobs"}
+	for sha1, blob := range t.Blobs {
+		blobTag = append(blobTag, fmt.Sprintf("%s:%s:%d", sha1, blob.Name, blob.Filemode))
+	}
+	n.Tags = append(n.Tags, blobTag)
+
+	treeTag := nostr.Tag{"trees"}
+	for sha1, tree := range t.Trees {
+		treeTag = append(treeTag, fmt.Sprintf("%s:%s:%d", sha1, tree.Name, tree.Filemode))
+	}
+	n.Tags = append(n.Tags, treeTag)
+
+	makeNonce(&n, t.GID)
+	err = n.Sign(actors.MyWallet().PrivateKey)
+	if err != nil {
+		return nostr.Event{}, err
+	}
+	return
+}
+
+// writeAndValidate writes the tree and validates that it matches the GID being claimed
+func (t *Tree) writeAndValidate() error {
+	var lines []string
+	for sha1, tree := range t.Blobs {
+		lines = append(lines, fmt.Sprintf("%d blob %s    %s", tree.Filemode, sha1, tree.Name))
+	}
+	for sha1, tree := range t.Trees {
+		lines = append(lines, fmt.Sprintf("%d tree %s    %s", tree.Filemode, sha1, tree.Name))
+	}
+	sha1, err := mktree(lines)
+	if err != nil {
+		return err
+	}
+	if t.GID != sha1 {
+		return fmt.Errorf("failed to reproduce tree, claimed GID is %s but we calculate it to be %s", t.GID, sha1)
+	}
+	return nil
 }
 
 type treeObject struct {
@@ -102,13 +161,14 @@ type treeObject struct {
 }
 
 type Branch struct {
-	Name       string           //name of this branch in plaintext, MUST not contain spaces
-	Head       library.Sha1     //commit identifier
-	ATag       string           //the part of the "a" tag that points to the repo anchor 31228:<pubkey of repo creator>:<repo event d tag>
-	DTag       library.Sha256   //random hash
-	Commits    []library.Sha256 //a list of event IDs for all merged commits for convenience when fetching events
-	Length     int64            //the total number of commits in this branch
-	LastUpdate int64            //timestamp of latest update
+	Name           string                          //name of this branch in plaintext, MUST not contain spaces
+	Head           library.Sha1                    //commit identifier
+	ATag           string                          //the part of the "a" tag that points to the repo anchor 31228:<pubkey of repo creator>:<repo event d tag>
+	DTag           library.Sha256                  //random hash
+	CommitEventIDs map[library.Sha256]library.Sha1 //a list of event IDs for all merged commits for convenience when fetching events
+	CommitGitIDs   map[library.Sha1]library.Sha256
+	Length         int64 //the total number of commits in this branch
+	LastUpdate     int64 //timestamp of latest update
 }
 
 type RepoAnchor struct {
@@ -121,6 +181,12 @@ type RepoAnchor struct {
 	Rocket       library.RocketID  //only used if integrated with nostrocket to get maintainers etc from there
 	LastUpdate   int64             //timestamp of latest update
 	LocalDir     string            //the location on the local filesystem if this exists locally
+}
+
+type BlobInTree struct {
+	Blob     Blob
+	Name     string
+	Filemode int64
 }
 
 type Blob struct {

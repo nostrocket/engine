@@ -69,8 +69,8 @@ func (b *Branch) Event(r *RepoAnchor) (nostr.Event, error) {
 	}
 	var commits []string
 	commits = append(commits, "commits")
-	for _, commit := range b.Commits {
-		commits = append(commits, commit)
+	for sha256, _ := range b.CommitEventIDs {
+		commits = append(commits, sha256)
 	}
 	branch := nostr.Event{
 		PubKey:    actors.MyWallet().Account,
@@ -82,7 +82,7 @@ func (b *Branch) Event(r *RepoAnchor) (nostr.Event, error) {
 			nostr.Tag{"head", b.Head},
 			nostr.Tag{"a", b.ATag},
 			nostr.Tag(commits),
-			nostr.Tag{"len", fmt.Sprintf("%d", len(b.Commits))},
+			nostr.Tag{"len", fmt.Sprintf("%d", len(b.CommitEventIDs))},
 		},
 		Content: "",
 	}
@@ -147,6 +147,7 @@ func (c *Commit) Event(ra *RepoAnchor) (commit nostr.Event, err error) {
 }
 
 func makeNonce(event *nostr.Event, objectID string) {
+	//todo make this time bounded and get the best hash possible
 	actors.LogCLI(fmt.Sprintf("mining event ID to match git object identifier: %s", objectID[0:4]), 4)
 	event.Tags = append(event.Tags, nostr.Tag{})
 	var nonce int64
@@ -158,10 +159,6 @@ func makeNonce(event *nostr.Event, objectID string) {
 			return
 		}
 	}
-}
-
-func (t *Tree) Event() (n nostr.Event, err error) {
-	return
 }
 
 func (ra *RepoAnchor) childATag() string {

@@ -16,6 +16,9 @@ installblocks:
 	go mod tidy
 	go install cmd/blocks/*.go
 
-snub:
+installsnub:
 	go mod tidy
 	go install cmd/snub2/*.go
+
+publish: installsnub
+	snub publish
