@@ -2,23 +2,23 @@ package snub
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/filemode"
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/spf13/viper"
-	"nostrocket/engine/actors"
 	"nostrocket/engine/library"
 )
 
 type Repo struct {
 	Anchor   RepoAnchor
 	Commits  map[library.Sha1]Commit
-	Trees    map[library.Sha1]Commit
+	Trees    map[library.Sha1]Tree
 	Branches map[string]Branch //[<branch name>]Branch
 	Blobs    map[library.Sha1]Blob
 	Git      git.Repository
 	Config   *viper.Viper
+	Sender   chan nostr.Event
 }
 
 func (r *Repo) loadFromDisk() error {
@@ -91,79 +91,54 @@ func (l *LegacyIdentification) tag() (t nostr.Tag) {
 
 type Tree struct {
 	//use mktree instead of hash-object
-	Blobs   map[library.Sha1]BlobInTree
-	Trees   map[library.Sha1]TreeInTree
+	Items   []TreeItem
 	GID     library.Sha1
 	EventID library.Sha256
 }
 
-type TreeInTree struct {
-	Filemode int64
-	Name     string
-	Tree     Tree
-}
-
-func (t *Tree) Event() (n nostr.Event, err error) {
-	n = nostr.Event{
-		PubKey:    actors.MyWallet().Account,
-		CreatedAt: nostr.Timestamp(time.Now().Unix()),
-		Kind:      3122,
-		Tags: nostr.Tags{
-			nostr.Tag{"gid", t.GID},
-		},
-		Content: "snub tree object",
-	}
-	blobTag := nostr.Tag{"blobs"}
-	for sha1, blob := range t.Blobs {
-		blobTag = append(blobTag, fmt.Sprintf("%s:%s:%d", sha1, blob.Name, blob.Filemode))
-	}
-	n.Tags = append(n.Tags, blobTag)
-
-	treeTag := nostr.Tag{"trees"}
-	for sha1, tree := range t.Trees {
-		treeTag = append(treeTag, fmt.Sprintf("%s:%s:%d", sha1, tree.Name, tree.Filemode))
-	}
-	n.Tags = append(n.Tags, treeTag)
-
-	makeNonce(&n, t.GID)
-	err = n.Sign(actors.MyWallet().PrivateKey)
-	if err != nil {
-		return nostr.Event{}, err
+func (t *Tree) String() (s string) {
+	for _, item := range t.Items {
+		s += fmt.Sprintf("%s %s %s %s\n", item.Filemode.String(), item.Type, item.Hash, item.Name)
 	}
 	return
+}
+
+type TreeItem struct {
+	Filemode filemode.FileMode
+	Name     string
+	Hash     library.Sha1
+	Type     string
+}
+
+func (t *TreeItem) filemode() string {
+	if len(t.Filemode.String()) > 6 {
+		return t.Filemode.String()[1:]
+	}
+	return t.Filemode.String()
 }
 
 // writeAndValidate writes the tree and validates that it matches the GID being claimed
 func (t *Tree) writeAndValidate() error {
 	var lines []string
-	for sha1, tree := range t.Blobs {
-		lines = append(lines, fmt.Sprintf("%d blob %s    %s", tree.Filemode, sha1, tree.Name))
-	}
-	for sha1, tree := range t.Trees {
-		lines = append(lines, fmt.Sprintf("%d tree %s    %s", tree.Filemode, sha1, tree.Name))
+	for _, item := range t.Items {
+		fmode := item.filemode()
+		lines = append(lines, fmt.Sprintf("%s %s %s\t%s", fmode, item.Type, item.Hash, item.Name))
 	}
 	sha1, err := mktree(lines)
 	if err != nil {
+		fmt.Println(t.String())
 		return err
 	}
 	if t.GID != sha1 {
-		return fmt.Errorf("failed to reproduce tree, claimed GID is %s but we calculate it to be %s", t.GID, sha1)
+		return fmt.Errorf("failed to reproduce item, claimed GID is %s but we calculate it to be %s", t.GID, sha1)
 	}
 	return nil
-}
-
-type treeObject struct {
-	name     string       //file name
-	gID      library.Sha1 //Git ID of the object
-	fileMode int64
-	blob     Blob //MUST include a Blob XOR Tree
-	tree     Tree //MUST include a Blob XOR Tree
 }
 
 type Branch struct {
 	Name           string                          //name of this branch in plaintext, MUST not contain spaces
 	Head           library.Sha1                    //commit identifier
-	ATag           string                          //the part of the "a" tag that points to the repo anchor 31228:<pubkey of repo creator>:<repo event d tag>
+	ATag           nostr.Tag                       //the part of the "a" tag that points to the repo anchor 31228:<pubkey of repo creator>:<repo event d tag>
 	DTag           library.Sha256                  //random hash
 	CommitEventIDs map[library.Sha256]library.Sha1 //a list of event IDs for all merged commits for convenience when fetching events
 	CommitGitIDs   map[library.Sha1]library.Sha256

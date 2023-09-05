@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/nbd-wtf/go-nostr"
 	"golang.org/x/exp/slices"
 	"nostrocket/engine/actors"
@@ -20,6 +21,7 @@ func Publish(options NewRepoOptions) error {
 	if err != nil {
 		return err
 	}
+	repo.Sender = actors.StartRelaysForPublishing(repo.Config.GetStringSlice("relays"))
 	head, err := repo.Git.Head()
 	if err != nil {
 		return err
@@ -108,6 +110,20 @@ func Publish(options NewRepoOptions) error {
 		return err
 	}
 	actors.LogCLI(fmt.Sprintf("\nfound %d objects in tree\n", len(objects)), 4)
+	var trees []library.Sha1
+	var blobs []library.Sha1
+	for sha1, s := range objects {
+		if s == "tree" {
+			trees = append(trees, sha1)
+		}
+		if s == "blob" {
+			blobs = append(blobs, sha1)
+		}
+	}
+	err = repo.makeTreeEventsAndPublishToRelays(trees, blobs)
+	if err != nil {
+		return err
+	}
 
 	//PUBLISH BRANCH
 	branch = repo.Branches[branchName]
@@ -115,8 +131,7 @@ func Publish(options NewRepoOptions) error {
 	if err != nil {
 		return err
 	}
-	sender := actors.StartRelaysForPublishing(repo.Config.GetStringSlice("relays"))
-	sender <- branchEvent
+	repo.Sender <- branchEvent
 	time.Sleep(time.Second * 5)
 	eventsFromRelay = relays.FetchEvents(repo.Config.GetStringSlice("relays"), nostr.Filters{
 		nostr.Filter{
@@ -132,7 +147,57 @@ func Publish(options NewRepoOptions) error {
 	if !success {
 		actors.LogCLI("failed to publish event", 2)
 	}
-	actors.LogCLI(fmt.Sprintf("Published repository, subscribe to tag <a %s> to view events", repo.Anchor.childATag()), 4)
+	actors.LogCLI(fmt.Sprintf("Published repository, subscribe to tag %s to view events", repo.Anchor.childATag()), 4)
+	return nil
+}
+
+func (r *Repo) makeTreeEventsAndPublishToRelays(trees []library.Sha1, blobs []library.Sha1) error {
+	var sent int64 = 0
+	for _, sha1 := range trees {
+		object, err := r.Git.TreeObject(plumbing.NewHash(sha1))
+		if err != nil {
+			return err
+		}
+		tree := Tree{
+			Items: []TreeItem{},
+			GID:   sha1,
+		}
+		for _, entry := range object.Entries {
+			var t string
+			if slices.Contains(trees, entry.Hash.String()) {
+				t = "tree"
+			} else {
+				if slices.Contains(blobs, entry.Hash.String()) {
+					t = "blob"
+				}
+			}
+			if len(t) == 0 {
+				panic("this should not happen")
+			}
+			tree.Items = append(tree.Items, TreeItem{
+				Filemode: entry.Mode,
+				Name:     entry.Name,
+				Hash:     entry.Hash.String(),
+				Type:     t,
+			})
+		}
+		err = tree.writeAndValidate()
+		if err != nil {
+			return err
+		}
+		event, err := tree.Event(r)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("\n%#v\n\n%#v\n", event, event.Tags)
+		r.Sender <- event
+		sent++
+		tree.EventID = event.ID
+		if len(r.Trees) == 0 {
+			r.Trees = make(map[library.Sha1]Tree)
+		}
+		r.Trees[tree.GID] = tree
+	}
 	return nil
 }
 
@@ -140,16 +205,15 @@ func Publish(options NewRepoOptions) error {
 // it ignores commits if their git identifier is contained in the ignore list, this is useful
 // in avoiding republishing commits that already exist as events.
 func (r *Repo) makeCommitEventsAndPublishToRelays(include []library.Sha1) error {
-	sender := actors.StartRelaysForPublishing(r.Config.GetStringSlice("relays"))
 	var sent int64 = 0
 	for sha1, commit := range r.Commits {
 		if slices.Contains(include, sha1) {
 			if len(commit.EventID) != 64 {
-				event, err := commit.Event(&r.Anchor)
+				event, err := commit.Event(r)
 				if err != nil {
 					return err
 				}
-				sender <- event
+				r.Sender <- event
 				commit.EventID = event.ID
 				r.Commits[sha1] = commit
 				sent++

@@ -54,7 +54,7 @@ func GetBranchFromEvent(event nostr.Event) (r Branch, err error) {
 	if !ok {
 		return r, fmt.Errorf("could not find branch d tag")
 	}
-	r.ATag = a
+	r.ATag = nostr.Tag{"a", a}
 	r.Name = name
 	r.DTag = d
 	r.LastUpdate = event.CreatedAt.Time().Unix()

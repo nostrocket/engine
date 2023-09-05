@@ -80,7 +80,7 @@ func (b *Branch) Event(r *RepoAnchor) (nostr.Event, error) {
 			nostr.Tag{"name", b.Name},
 			nostr.Tag{"d", b.DTag},
 			nostr.Tag{"head", b.Head},
-			nostr.Tag{"a", b.ATag},
+			b.ATag,
 			nostr.Tag(commits),
 			nostr.Tag{"len", fmt.Sprintf("%d", len(b.CommitEventIDs))},
 		},
@@ -116,7 +116,7 @@ func (c *Commit) parentTag() nostr.Tag {
 	return parents
 }
 
-func (c *Commit) Event(ra *RepoAnchor) (commit nostr.Event, err error) {
+func (c *Commit) Event(r *Repo) (commit nostr.Event, err error) {
 	//when migrating from existing git repo, we need to include the full text of the commit to maintain backwards
 	//compatibility with legacy repositories that use emails as ID instead of pubkeys, if we don't include this it
 	//might become impossible to reproduce the same identifier
@@ -127,7 +127,7 @@ func (c *Commit) Event(ra *RepoAnchor) (commit nostr.Event, err error) {
 		Tags: nostr.Tags{
 			nostr.Tag{"gid", c.GID},
 			nostr.Tag{"tree", c.TreeID},
-			nostr.Tag{"a", ra.childATag()},
+			r.Anchor.childATag(),
 			c.Author.tag(),
 			c.Committer.tag(),
 			//nostr.Tag{"legacy", c.LegacyBackup}, //I think we might not need this, hashes seem to always work
@@ -138,7 +138,7 @@ func (c *Commit) Event(ra *RepoAnchor) (commit nostr.Event, err error) {
 	if len(c.LegacyBackup) > 0 {
 		commit.Tags = append(commit.Tags, nostr.Tag{"legacy", c.LegacyBackup})
 	}
-	makeNonce(&commit, c.GID)
+	makeNonce(&commit, c.GID, r.Config.GetInt64("PoW"))
 	err = commit.Sign(actors.MyWallet().PrivateKey)
 	if err != nil {
 		return nostr.Event{}, err
@@ -146,7 +146,39 @@ func (c *Commit) Event(ra *RepoAnchor) (commit nostr.Event, err error) {
 	return commit, nil
 }
 
-func makeNonce(event *nostr.Event, objectID string) {
+func (t *Tree) Event(r *Repo) (n nostr.Event, err error) {
+	n = nostr.Event{
+		PubKey:    actors.MyWallet().Account,
+		CreatedAt: nostr.Timestamp(time.Now().Unix()),
+		Kind:      3122,
+		Tags: nostr.Tags{
+			nostr.Tag{"gid", t.GID},
+			r.Anchor.childATag(),
+		},
+		Content: "snub tree object",
+	}
+	blobTag := nostr.Tag{"blobs"}
+	treeTag := nostr.Tag{"trees"}
+	for _, item := range t.Items {
+		if item.Type == "blob" {
+			blobTag = append(blobTag, fmt.Sprintf("%s:%s:%s", item.Hash, item.Name, item.filemode()))
+		}
+		if item.Type == "tree" {
+			treeTag = append(treeTag, fmt.Sprintf("%s:%s:%s", item.Hash, item.Name, item.filemode()))
+		}
+	}
+	n.Tags = append(n.Tags, blobTag)
+	n.Tags = append(n.Tags, treeTag)
+
+	makeNonce(&n, t.GID, r.Config.GetInt64("PoW"))
+	err = n.Sign(actors.MyWallet().PrivateKey)
+	if err != nil {
+		return nostr.Event{}, err
+	}
+	return
+}
+
+func makeNonce(event *nostr.Event, objectID string, pow int64) {
 	//todo make this time bounded and get the best hash possible
 	actors.LogCLI(fmt.Sprintf("mining event ID to match git object identifier: %s", objectID[0:4]), 4)
 	event.Tags = append(event.Tags, nostr.Tag{})
@@ -154,13 +186,15 @@ func makeNonce(event *nostr.Event, objectID string) {
 	for {
 		nonce++
 		event.Tags[len(event.Tags)-1] = nostr.Tag{"nonce", fmt.Sprintf("%d", nonce)}
-		if event.GetID()[0:4] == objectID[0:4] {
+		if event.GetID()[0:pow] == objectID[0:pow] {
 			event.ID = event.GetID()
 			return
 		}
 	}
 }
 
-func (ra *RepoAnchor) childATag() string {
-	return fmt.Sprintf("%d:%s:%s", 31228, ra.CreatedBy, ra.DTag)
+func (ra *RepoAnchor) childATag() (t nostr.Tag) {
+	t = append(t, "a")
+	t = append(t, fmt.Sprintf("%d:%s:%s", 31228, ra.CreatedBy, ra.DTag))
+	return
 }

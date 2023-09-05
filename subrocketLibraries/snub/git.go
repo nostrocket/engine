@@ -61,13 +61,14 @@ func mktree(items []string) (library.Sha1, error) {
 	var input string
 	for i, item := range items {
 		input += item
-		if i < len(items) {
+		if i < len(items)-1 {
 			input += "\n"
 		}
 	}
 	if _, err := stdin.Write([]byte(input)); err != nil {
 		return "", err
 	}
+	stdin.Close()
 
 	output, err := ioutil.ReadAll(stdout)
 	if err != nil {
@@ -75,6 +76,7 @@ func mktree(items []string) (library.Sha1, error) {
 	}
 
 	if err := cmd.Wait(); err != nil {
+
 		fmt.Println(cmd.String())
 		return "", err
 	}
@@ -188,6 +190,7 @@ func (r *Repo) getObjectsForBranch(name string) (bm BlobMap, err error) {
 func (r *Repo) iterateTree(tree library.Sha1, objects map[library.Sha1]string) error {
 	o, err := r.Git.TreeObject(plumbing.NewHash(tree))
 	if err != nil {
+		objects[tree] = "blob"
 		return err
 	}
 	objects[o.Hash.String()] = "tree"
