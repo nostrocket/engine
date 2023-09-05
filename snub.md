@@ -1,8 +1,8 @@
 # Snub
 ### I didn't choose the snub life; the snub life chose me.
-Github did something to me recently which really annoyed me, and its become obvious that storing canonical git repositories on centralised infrastructure is no longer a viable approach for open source projects.
+Github did something recently which really annoyed me, and its become obvious that storing canonical git repositories on centralised infrastructure is no longer a viable approach for open source projects.
 
-This is especially if you're working on freedom tech. In any case, it's not going to work for Nostrocket, so I have to build something that will solve the problem.
+This is especially true if you're working on freedom tech. In any case, it's not going to work for Nostrocket, so I have to build something that will solve the problem.
 
 ![](https://image.nostr.build/b87d253e485246c32a4e062d21db046994daba3617d8a4c9bf60ceb3de05adc5.jpg)
 
@@ -35,7 +35,9 @@ I want my git repositories to be:
 You can publish a git repository as events. I've spent about a week on getting this part working. Next up I will implement clone. I'm actively working on this whenever I've got a spare minute.
 
 ## Get Started
-Install the latest version of Golang, and make sure your `go/bin` directory is in your PATH. Basically just follow the usual golang install instructions. Then:
+Install the latest version of Golang, and make sure your `go/bin` directory is in your PATH. Basically just follow the usual golang install instructions, or if you're on OSX run `brew update` and `brew install go` to make sure you have the latest. 
+
+Then:
 
 ```
 git clone https://github.com/nostrocket/engine.git
