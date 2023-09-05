@@ -71,10 +71,10 @@ cd flamebucket
 
 ## Architecture
 ### Repo Anchor - Kind 31228
-This is a replaceable event that MUST contain the repository name and D tag.
-It MUST contain either a list of maintainer pubkeys OR a Rocket ID to take maintainers from a Nostrocket organization.
-It MAY contain an `a` tag identifying an upstream repository if this is a fork.
-It MAY contain a `forknode` tag identifying the latest commit which is at parity with the upstream repository.
+This is a replaceable event that MUST contain the repository name and D tag.   
+It MUST contain either a list of maintainer pubkeys OR a Rocket ID to take maintainers from a Nostrocket organization.   
+It MAY contain an `a` tag identifying an upstream repository if this is a fork.   
+It MAY contain a `forknode` tag identifying the latest commit which is at parity with the upstream repository.   
 
 ### Branch - Kind 31227
 This is a replaceable event that MUST contain a branch name, HEAD ref, `d` tag, and `a` tag identifying the kind 31228 Repo Anchor.
