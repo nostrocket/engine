@@ -13,8 +13,10 @@
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
-.idea
+.idea/
 *.sum
 go.sum
 .DS_Store
-*.sum
+go.sum
+.snub/
+config.yaml
