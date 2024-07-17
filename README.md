@@ -1,4 +1,5 @@
 # Nostrocket Engine
+## This implementation is deprecated due to Nostrocket's new Microsubjective Blockchain architecture.
 Problem: can't reach consensus about the current state of Nostrocket and Subrockets
 
 Go [here](https://github.com/nostrocket/NIPS/blob/main/state.md) to understand consensus and state transitions.
